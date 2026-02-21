@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ぷよ認識 for puyosim</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ぷよ認識 for puyosim</h1>
+            <p>スクリーンショットから puyosim.com のURLを生成します</p>
+        </header>
+
+        <main>
+            <section class="upload-section">
+                <div id="status" class="status loading">OpenCV.js を読み込み中...</div>
+                <div class="file-input-wrapper">
+                    <button class="btn-primary">画像を選択</button>
+                    <input type="file" id="fileInput" accept="image/*" disabled>
+                </div>
+            </section>
+
+            <section class="preview-section">
+                <div class="canvas-wrapper">
+                    <canvas id="canvasInput"></canvas>
+                </div>
+            </section>
+
+            <section class="result-section" id="resultArea" style="display: none;">
+                <h2>生成されたURL</h2>
+                <div class="result-url-wrapper">
+                    <input type="text" id="resultUrl" readonly>
+                    <button id="copyBtn" class="btn-secondary">コピー</button>
+                </div>
+                <div class="link-wrapper">
+                    <a id="puyoSimLink" href="#" target="_blank" class="btn-puyosim">puyosim.com で開く</a>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2026 ぷよ認識プロジェクト</p>
+        </footer>
+    </div>
+
+    <!-- OpenCV.js -->
+    <script async src="https://docs.opencv.org/4.x/opencv.js" type="text/javascript"></script>
+    <script src="js/script.js"></script>
+</body>
+</html>
