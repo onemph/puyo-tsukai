@@ -89,9 +89,9 @@ function recognizePuyo(img) {
         const height = src.rows;
 
         // 2. 盤面エリアの推定 (ぷよクエ標準レイアウト)
-        // 縦 56% 〜 96% 付近が盤面。横は左右の余白を考慮。
-        const boardTop = Math.floor(height * 0.56);
-        const boardBottom = Math.floor(height * 0.96);
+        // 縦 58% 〜 98.5% 付近が盤面。
+        const boardTop = Math.floor(height * 0.58);
+        const boardBottom = Math.floor(height * 0.985);
         const boardLeft = Math.floor(width * 0.02);
         const boardRight = Math.floor(width * 0.98);
 
@@ -103,12 +103,12 @@ function recognizePuyo(img) {
 
         let boardResult = "";
 
-        // HSV に変換して色を識別しやすくする
+        // HSV に変換
         let hsv = new cv.Mat();
         cv.cvtColor(src, hsv, cv.COLOR_RGBA2RGB);
         cv.cvtColor(hsv, hsv, cv.COLOR_RGB2HSV);
 
-        // 3. 各セルをスキャン (行優先: 上から下の各行、左から右)
+        // 3. 各セルをスキャン
         let canvas = document.getElementById('canvasInput');
         let ctx = canvas.getContext('2d');
         ctx.lineWidth = 2;
@@ -123,25 +123,24 @@ function recognizePuyo(img) {
                 const centerX = Math.floor(x + cellWidth / 2);
                 const centerY = Math.floor(y + cellHeight / 2);
 
-                // サンプリングエリア内の平均HSVを取得
-                const result = detectPuyoType(hsv, centerX, centerY);
+                // 多点サンプリングによる認識
+                const result = detectPuyoMultiPoint(hsv, centerX, centerY, Math.floor(cellWidth * 0.25));
                 boardResult += result;
 
-                // デバッグ用の枠と文字の描画
+                // デバッグ用の枠と文字
                 ctx.strokeStyle = (result === 'A') ? 'red' : 'rgba(255, 255, 255, 0.8)';
                 ctx.strokeRect(x, y, cellWidth, cellHeight);
 
-                // 文字を見やすくするために影をつける
                 ctx.fillStyle = 'black';
                 ctx.fillText(result, centerX + 1, centerY + 1);
                 ctx.fillStyle = (result === 'A') ? '#ff4d4d' : 'white';
                 ctx.fillText(result, centerX, centerY);
 
-                // 全マスにHSV情報を小さく表示 (デバッグ・微調整用)
-                let avg = getAverageHSV(hsv, centerX, centerY, 2);
-                ctx.font = '9px Arial';
+                // HSV情報の常時表示 (極小)
+                let avg = getAverageHSV(hsv, centerX, centerY, 1);
+                ctx.font = '8px Arial';
                 ctx.fillStyle = 'yellow';
-                ctx.fillText(`H${Math.floor(avg.h)} S${Math.floor(avg.s)}`, centerX, centerY + 15);
+                ctx.fillText(`H${Math.floor(avg.h)} S${Math.floor(avg.s)}`, centerX, centerY + 18);
                 ctx.font = 'bold 24px Arial';
             }
         }
@@ -190,39 +189,72 @@ function getAverageHSV(hsv, cx, cy, range) {
 }
 
 /**
- * 特定の箇所のぷよの種類を判定する
+ * 多点サンプリングによるぷよ判定
+ */
+function detectPuyoMultiPoint(hsv, cx, cy, radius) {
+    const points = [];
+    const step = radius / 1.5;
+
+    // 3x3 のグリッドでサンプリング
+    for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+            points.push(detectPuyoType(hsv, cx + dx * step, cy + dy * step));
+        }
+    }
+
+    // 多数決 (A以外の最頻出を採用、同数の場合は距離の総和などで判定も可能だがまずはシンプルに)
+    const counts = {};
+    points.forEach(p => { counts[p] = (counts[p] || 0) + 1; });
+
+    let bestType = 'A';
+    let maxCount = 0;
+
+    // なし(A)よりも色がある方を優先する
+    for (const [type, count] of Object.entries(counts)) {
+        if (type === 'A') continue;
+        if (count > maxCount) {
+            maxCount = count;
+            bestType = type;
+        }
+    }
+
+    // 色が優勢ならその色、そうでなければ A
+    return (maxCount >= 3) ? bestType : 'A';
+}
+
+/**
+ * 代表的な色のHSV値 (微調整版)
+ */
+const COLOR_TARGETS = {
+    red: { h: 0, s: 230, v: 220 },     // 純粋な赤
+    blue: { h: 110, s: 200, v: 230 },   // 鮮やかな青
+    yellow: { h: 25, s: 240, v: 250 },  // 明るい黄色
+    green: { h: 65, s: 220, v: 210 },   // 落ち着いた緑
+    purple: { h: 145, s: 180, v: 200 }, // 紫
+    heart: { h: 165, s: 130, v: 240 }   // ピンク
+};
+
+/**
+ * 特定の箇所のぷよの種類を判定する (色距離法)
  */
 function detectPuyoType(hsv, cx, cy) {
-    const avg = getAverageHSV(hsv, cx, cy, 2);
+    const avg = getAverageHSV(hsv, cx, cy, 1);
     let h = avg.h;
     let s = avg.s;
     let v = avg.v;
 
-    // 彩度が極端に低い場合は「なし」 (さらに閾値を20に緩和)
-    if (s < 20) {
-        return PUYO_MAP['none'];
-    }
-
-    // 代表的な色のHSV値 (Hは0-180, S/Vは0-255)
-    const targets = {
-        red: { h: 0, s: 200, v: 200 },
-        yellow: { h: 30, s: 200, v: 200 },
-        green: { h: 60, s: 200, v: 200 },
-        blue: { h: 115, s: 200, v: 200 },
-        purple: { h: 145, s: 200, v: 200 },
-        heart: { h: 165, s: 150, v: 200 }
-    };
+    // 彩度が極端に低い場合は「なし」
+    if (s < 25) return 'A';
 
     let minDist = Infinity;
     let closestType = 'none';
 
-    for (const [type, target] of Object.entries(targets)) {
-        // 色相(H)の差分を計算 (円形であることを考慮)
+    for (const [type, target] of Object.entries(COLOR_TARGETS)) {
         let hDiff = Math.abs(h - target.h);
         if (hDiff > 90) hDiff = 180 - hDiff;
 
-        // 色距離の簡易計算 (Hの重みを大きく)
-        let dist = hDiff * 2 + Math.abs(s - target.s) * 0.1 + Math.abs(v - target.v) * 0.1;
+        // Hを最重視、SとVは補助程度
+        let dist = hDiff * 5 + Math.abs(s - target.s) * 0.5 + Math.abs(v - target.v) * 0.2;
 
         if (dist < minDist) {
             minDist = dist;
@@ -230,10 +262,9 @@ function detectPuyoType(hsv, cx, cy) {
         }
     }
 
-    // あまりにも距離が遠いか、特定の範囲外なら A (距離の閾値を 45 に設定)
-    if (minDist > 45) return 'A';
+    // 距離が遠すぎる場合は A
+    if (minDist > 100) return 'A';
 
-    // 代表色の判定結果を返す (プラスぷよ判定は削除)
     return PUYO_MAP[closestType] || 'A';
 }
 
@@ -244,11 +275,11 @@ function detectNextPuyos(hsv, width, height) {
     let nextResult = "";
     const ctx = document.getElementById('canvasInput').getContext('2d');
 
-    // ネクストエリアの推定座標 (わずかに下にずらす)
-    const nextTop = Math.floor(height * 0.13);
-    const nextBottom = Math.floor(height * 0.19);
-    const nextLeft = Math.floor(width * 0.15);
-    const nextRight = Math.floor(width * 0.85);
+    // ネクストエリアの推定座標 (さらに精度を上げるために微調整)
+    const nextTop = Math.floor(height * 0.115);
+    const nextBottom = Math.floor(height * 0.18);
+    const nextLeft = Math.floor(width * 0.135);
+    const nextRight = Math.floor(width * 0.865);
 
     const nextWidth = nextRight - nextLeft;
     const cellWidth = nextWidth / 5;
@@ -258,12 +289,12 @@ function detectNextPuyos(hsv, width, height) {
 
     for (let i = 0; i < 8; i++) {
         const col = i % 5;
-        const row = Math.floor(i / 5);
         const centerX = Math.floor(nextLeft + (col + 0.5) * cellWidth);
-        const centerY = Math.floor(nextTop + (row + 0.5) * (nextBottom - nextTop));
+        const centerY = Math.floor(nextTop + (nextBottom - nextTop) / 2);
 
         if (i < 5) {
-            const result = detectPuyoType(hsv, centerX, centerY);
+            // ネクストも多点サンプリングを適用
+            const result = detectPuyoMultiPoint(hsv, centerX, centerY, Math.floor(cellWidth * 0.2));
             nextResult += result;
 
             // デバッグ表示
@@ -272,9 +303,9 @@ function detectNextPuyos(hsv, width, height) {
             ctx.fillText(result, centerX, centerY);
 
             // HSV表示
-            let avg = getAverageHSV(hsv, centerX, centerY, 2);
+            let avg = getAverageHSV(hsv, centerX, centerY, 1);
             ctx.fillStyle = 'cyan';
-            ctx.fillText(`H${Math.floor(avg.h)} S${Math.floor(avg.s)}`, centerX, centerY + 15);
+            ctx.fillText(`H${Math.floor(avg.h)} S${Math.floor(avg.s)}`, centerX, centerY + 18);
         } else {
             nextResult += 'A';
         }
