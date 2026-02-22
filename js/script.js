@@ -137,14 +137,12 @@ function recognizePuyo(img) {
                 ctx.fillStyle = (result === 'A') ? '#ff4d4d' : 'white';
                 ctx.fillText(result, centerX, centerY);
 
-                // 認識失敗時はHSVを小さく表示 (デバッグ用)
-                if (result === 'A') {
-                    let avg = getAverageHSV(hsv, centerX, centerY, 2);
-                    ctx.font = '10px Arial';
-                    ctx.fillStyle = 'yellow';
-                    ctx.fillText(`H${Math.floor(avg.h)} S${Math.floor(avg.s)}`, centerX, centerY + 15);
-                    ctx.font = 'bold 24px Arial';
-                }
+                // 全マスにHSV情報を小さく表示 (デバッグ・微調整用)
+                let avg = getAverageHSV(hsv, centerX, centerY, 2);
+                ctx.font = '9px Arial';
+                ctx.fillStyle = 'yellow';
+                ctx.fillText(`H${Math.floor(avg.h)} S${Math.floor(avg.s)}`, centerX, centerY + 15);
+                ctx.font = 'bold 24px Arial';
             }
         }
 
@@ -200,39 +198,43 @@ function detectPuyoType(hsv, cx, cy) {
     let s = avg.s;
     let v = avg.v;
 
-    // 彩度が低い場合は「なし」 (さらに閾値を25に緩和)
-    if (s < 25) {
+    // 彩度が極端に低い場合は「なし」 (さらに閾値を20に緩和)
+    if (s < 20) {
         return PUYO_MAP['none'];
     }
 
-    // HSVによる識別 (判定範囲をさらに広域化)
-    let type = 'none';
+    // 代表的な色のHSV値 (Hは0-180, S/Vは0-255)
+    const targets = {
+        red: { h: 0, s: 200, v: 200 },
+        yellow: { h: 30, s: 200, v: 200 },
+        green: { h: 60, s: 200, v: 200 },
+        blue: { h: 115, s: 200, v: 200 },
+        purple: { h: 145, s: 200, v: 200 },
+        heart: { h: 165, s: 150, v: 200 }
+    };
 
-    // 赤: 0-20 または 160-180
-    if (h < 20 || h > 160) {
-        // ハートとの判別 (ハートは少しピンク寄り、彩度がやや低め)
-        if (h > 155 && h < 175 && s < 185) type = 'heart';
-        else type = 'red';
-    }
-    // 黄: 18-45
-    else if (h >= 18 && h < 45) type = 'yellow';
-    // 緑: 45-95
-    else if (h >= 45 && h < 95) type = 'green';
-    // 青: 95-140
-    else if (h >= 95 && h < 140) type = 'blue';
-    // 紫: 140-160
-    else if (h >= 140 && h <= 160) type = 'purple';
+    let minDist = Infinity;
+    let closestType = 'none';
 
-    if (type === 'none') return 'A';
+    for (const [type, target] of Object.entries(targets)) {
+        // 色相(H)の差分を計算 (円形であることを考慮)
+        let hDiff = Math.abs(h - target.h);
+        if (hDiff > 90) hDiff = 180 - hDiff;
 
-    // プラスぷよの判定 (V値重視)
-    if (type !== 'none' && type !== 'heart') {
-        if (v > 215 && s < 225) {
-            return PUYO_MAP[type + '_plus'];
+        // 色距離の簡易計算 (Hの重みを大きく)
+        let dist = hDiff * 2 + Math.abs(s - target.s) * 0.1 + Math.abs(v - target.v) * 0.1;
+
+        if (dist < minDist) {
+            minDist = dist;
+            closestType = type;
         }
     }
 
-    return PUYO_MAP[type] || 'A';
+    // あまりにも距離が遠いか、特定の範囲外なら A (距離の閾値を 45 に設定)
+    if (minDist > 45) return 'A';
+
+    // 代表色の判定結果を返す (プラスぷよ判定は削除)
+    return PUYO_MAP[closestType] || 'A';
 }
 
 /**
@@ -242,37 +244,41 @@ function detectNextPuyos(hsv, width, height) {
     let nextResult = "";
     const ctx = document.getElementById('canvasInput').getContext('2d');
 
-    // ネクストエリアの推定座標 (上部の5〜8枚並んでいるエリア)
-    const nextTop = Math.floor(height * 0.12);
-    const nextBottom = Math.floor(height * 0.18);
+    // ネクストエリアの推定座標 (わずかに下にずらす)
+    const nextTop = Math.floor(height * 0.13);
+    const nextBottom = Math.floor(height * 0.19);
     const nextLeft = Math.floor(width * 0.15);
     const nextRight = Math.floor(width * 0.85);
 
     const nextWidth = nextRight - nextLeft;
-    const cellWidth = nextWidth / 5; // 画面上に見えているのは5枚程度だが、URLは8枚分必要
+    const cellWidth = nextWidth / 5;
 
     ctx.strokeStyle = 'cyan';
+    ctx.font = '10px Arial';
 
     for (let i = 0; i < 8; i++) {
-        // 5枚目以降は画面外または重なっている可能性があるため暫定処理
         const col = i % 5;
         const row = Math.floor(i / 5);
-
         const centerX = Math.floor(nextLeft + (col + 0.5) * cellWidth);
         const centerY = Math.floor(nextTop + (row + 0.5) * (nextBottom - nextTop));
 
         if (i < 5) {
-            const result = detectPuyoType(hsv, centerX, centerY, Math.floor(cellWidth * 0.2));
+            const result = detectPuyoType(hsv, centerX, centerY);
             nextResult += result;
 
             // デバッグ表示
             ctx.strokeRect(nextLeft + col * cellWidth, nextTop, cellWidth, nextBottom - nextTop);
+            ctx.fillStyle = 'white';
             ctx.fillText(result, centerX, centerY);
+
+            // HSV表示
+            let avg = getAverageHSV(hsv, centerX, centerY, 2);
+            ctx.fillStyle = 'cyan';
+            ctx.fillText(`H${Math.floor(avg.h)} S${Math.floor(avg.s)}`, centerX, centerY + 15);
         } else {
-            nextResult += 'A'; // 6〜8枚目は暫定的に「なし」
+            nextResult += 'A';
         }
     }
-
     return nextResult;
 }
 
