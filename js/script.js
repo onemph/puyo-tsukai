@@ -124,7 +124,7 @@ function recognizePuyo(img) {
                 const centerY = Math.floor(y + cellHeight / 2);
 
                 // サンプリングエリア内の平均HSVを取得
-                const result = detectPuyoType(hsv, centerX, centerY, Math.floor(cellWidth * 0.1));
+                const result = detectPuyoType(hsv, centerX, centerY);
                 boardResult += result;
 
                 // デバッグ用の枠と文字の描画
@@ -136,6 +136,15 @@ function recognizePuyo(img) {
                 ctx.fillText(result, centerX + 1, centerY + 1);
                 ctx.fillStyle = (result === 'A') ? '#ff4d4d' : 'white';
                 ctx.fillText(result, centerX, centerY);
+
+                // 認識失敗時はHSVを小さく表示 (デバッグ用)
+                if (result === 'A') {
+                    let avg = getAverageHSV(hsv, centerX, centerY, 2);
+                    ctx.font = '10px Arial';
+                    ctx.fillStyle = 'yellow';
+                    ctx.fillText(`H${Math.floor(avg.h)} S${Math.floor(avg.s)}`, centerX, centerY + 15);
+                    ctx.font = 'bold 24px Arial';
+                }
             }
         }
 
@@ -157,16 +166,13 @@ function recognizePuyo(img) {
 }
 
 /**
- * 特定の箇所のぷよの種類を判定する
+ * HSVの平均値を取得するヘルパー
  */
-function detectPuyoType(hsv, cx, cy, radius) {
-    // 中心付近の複数のピクセルをサンプリングして平均をとる (ノイズ対策)
+function getAverageHSV(hsv, cx, cy, range) {
     let totalH = 0, totalS = 0, totalV = 0;
     let count = 0;
-    const sampleRange = 2; // 5x5 エリア
-
-    for (let dy = -sampleRange; dy <= sampleRange; dy++) {
-        for (let dx = -sampleRange; dx <= sampleRange; dx++) {
+    for (let dy = -range; dy <= range; dy++) {
+        for (let dx = -range; dx <= range; dx++) {
             let py = cy + dy;
             let px = cx + dx;
             if (py >= 0 && py < hsv.rows && px >= 0 && px < hsv.cols) {
@@ -178,42 +184,50 @@ function detectPuyoType(hsv, cx, cy, radius) {
             }
         }
     }
+    return {
+        h: totalH / (count || 1),
+        s: totalS / (count || 1),
+        v: totalV / (count || 1)
+    };
+}
 
-    if (count === 0) return 'A';
+/**
+ * 特定の箇所のぷよの種類を判定する
+ */
+function detectPuyoType(hsv, cx, cy) {
+    const avg = getAverageHSV(hsv, cx, cy, 2);
+    let h = avg.h;
+    let s = avg.s;
+    let v = avg.v;
 
-    let h = totalH / count;
-    let s = totalS / count;
-    let v = totalV / count;
-
-    // 彩度が低い場合は「なし」 (中央の光沢を考慮して閾値を30に緩和)
-    if (s < 30) {
+    // 彩度が低い場合は「なし」 (さらに閾値を25に緩和)
+    if (s < 25) {
         return PUYO_MAP['none'];
     }
 
-    // HSVによる識別 (ぷよクエの配色に合わせた調整)
+    // HSVによる識別 (判定範囲をさらに広域化)
     let type = 'none';
 
-    // 赤: 0-18 または 162-180
-    if (h < 18 || h > 162) {
+    // 赤: 0-20 または 160-180
+    if (h < 20 || h > 160) {
         // ハートとの判別 (ハートは少しピンク寄り、彩度がやや低め)
-        if (h > 155 && h < 175 && s < 180) type = 'heart';
+        if (h > 155 && h < 175 && s < 185) type = 'heart';
         else type = 'red';
     }
-    // 黄: 20-42
-    else if (h >= 20 && h < 42) type = 'yellow';
-    // 緑: 42-95
-    else if (h >= 42 && h < 95) type = 'green';
-    // 青: 100-138
-    else if (h >= 100 && h < 138) type = 'blue';
-    // 紫: 138-162
-    else if (h >= 138 && h <= 162) type = 'purple';
+    // 黄: 18-45
+    else if (h >= 18 && h < 45) type = 'yellow';
+    // 緑: 45-95
+    else if (h >= 45 && h < 95) type = 'green';
+    // 青: 95-140
+    else if (h >= 95 && h < 140) type = 'blue';
+    // 紫: 140-160
+    else if (h >= 140 && h <= 160) type = 'purple';
 
     if (type === 'none') return 'A';
 
-    // プラスぷよの判定 (中心部が白く光っていることが多い)
+    // プラスぷよの判定 (V値重視)
     if (type !== 'none' && type !== 'heart') {
-        // V値が高く、かつS値が相対的に低い（白飛びしている）場合をプラスとする
-        if (v > 220 && s < 220) {
+        if (v > 215 && s < 225) {
             return PUYO_MAP[type + '_plus'];
         }
     }
