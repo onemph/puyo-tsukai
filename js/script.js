@@ -89,11 +89,11 @@ function recognizePuyo(img) {
         const height = src.rows;
 
         // 2. 盤面エリアの推定 (ぷよクエ標準レイアウト)
-        // 縦 58% 〜 98.5% 付近が盤面。
-        const boardTop = Math.floor(height * 0.58);
-        const boardBottom = Math.floor(height * 0.985);
-        const boardLeft = Math.floor(width * 0.02);
-        const boardRight = Math.floor(width * 0.98);
+        // 縦 58.5% 〜 96% 付近が盤面。左右に 5% ずつの余白を想定。
+        const boardTop = Math.floor(height * 0.585);
+        const boardBottom = Math.floor(height * 0.96);
+        const boardLeft = Math.floor(width * 0.05);
+        const boardRight = Math.floor(width * 0.95);
 
         const boardWidth = boardRight - boardLeft;
         const boardHeight = boardBottom - boardTop;
@@ -223,15 +223,15 @@ function detectPuyoMultiPoint(hsv, cx, cy, radius) {
 }
 
 /**
- * 代表的な色のHSV値 (微調整版)
+ * 代表的な色のHSV値 (実機スクリーンショットに基づきさらに調整)
  */
 const COLOR_TARGETS = {
-    red: { h: 0, s: 230, v: 220 },     // 純粋な赤
-    blue: { h: 110, s: 200, v: 230 },   // 鮮やかな青
-    yellow: { h: 25, s: 240, v: 250 },  // 明るい黄色
-    green: { h: 65, s: 220, v: 210 },   // 落ち着いた緑
-    purple: { h: 145, s: 180, v: 200 }, // 紫
-    heart: { h: 165, s: 130, v: 240 }   // ピンク
+    red: { h: 0, s: 130, v: 180 },
+    blue: { h: 105, s: 130, v: 180 },
+    yellow: { h: 25, s: 130, v: 180 },
+    green: { h: 60, s: 130, v: 180 },
+    purple: { h: 145, s: 100, v: 160 },
+    heart: { h: 165, s: 110, v: 200 }
 };
 
 /**
@@ -243,8 +243,8 @@ function detectPuyoType(hsv, cx, cy) {
     let s = avg.s;
     let v = avg.v;
 
-    // 彩度が極端に低い場合は「なし」
-    if (s < 25) return 'A';
+    // 彩度が極端に低い場合は「なし」 (さらに緩和して 15)
+    if (s < 15) return 'A';
 
     let minDist = Infinity;
     let closestType = 'none';
@@ -253,8 +253,8 @@ function detectPuyoType(hsv, cx, cy) {
         let hDiff = Math.abs(h - target.h);
         if (hDiff > 90) hDiff = 180 - hDiff;
 
-        // Hを最重視、SとVは補助程度
-        let dist = hDiff * 5 + Math.abs(s - target.s) * 0.5 + Math.abs(v - target.v) * 0.2;
+        // Hを最重視
+        let dist = hDiff * 5 + Math.abs(s - target.s) * 0.3 + Math.abs(v - target.v) * 0.2;
 
         if (dist < minDist) {
             minDist = dist;
@@ -262,8 +262,8 @@ function detectPuyoType(hsv, cx, cy) {
         }
     }
 
-    // 距離が遠すぎる場合は A
-    if (minDist > 100) return 'A';
+    // 距離が遠すぎる場合は A (閾値を 150 に緩和)
+    if (minDist > 150) return 'A';
 
     return PUYO_MAP[closestType] || 'A';
 }
@@ -275,11 +275,11 @@ function detectNextPuyos(hsv, width, height) {
     let nextResult = "";
     const ctx = document.getElementById('canvasInput').getContext('2d');
 
-    // ネクストエリアの推定座標 (さらに精度を上げるために微調整)
-    const nextTop = Math.floor(height * 0.115);
-    const nextBottom = Math.floor(height * 0.18);
-    const nextLeft = Math.floor(width * 0.135);
-    const nextRight = Math.floor(width * 0.865);
+    // ネクストエリアの推定座標 (大幅修正)
+    const nextTop = Math.floor(height * 0.22);
+    const nextBottom = Math.floor(height * 0.275);
+    const nextLeft = Math.floor(width * 0.18);
+    const nextRight = Math.floor(width * 0.82);
 
     const nextWidth = nextRight - nextLeft;
     const cellWidth = nextWidth / 5;
