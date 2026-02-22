@@ -89,11 +89,11 @@ function recognizePuyo(img) {
         const height = src.rows;
 
         // 2. 盤面エリアの推定 (ぷよクエ標準レイアウト)
-        // 縦 58% 〜 96% 付近が盤面。横はほぼ全域。
+        // 縦 58% 〜 96% 付近が盤面。横は左右の余白を考慮。
         const boardTop = Math.floor(height * 0.58);
         const boardBottom = Math.floor(height * 0.965);
-        const boardLeft = Math.floor(width * 0.01);
-        const boardRight = Math.floor(width * 0.99);
+        const boardLeft = Math.floor(width * 0.025); // わずかに内側に
+        const boardRight = Math.floor(width * 0.975); // わずかに内側に
 
         const boardWidth = boardRight - boardLeft;
         const boardHeight = boardBottom - boardTop;
@@ -113,8 +113,7 @@ function recognizePuyo(img) {
         let ctx = canvas.getContext('2d');
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
         ctx.lineWidth = 2;
-        ctx.font = 'bold 20px Arial';
-        ctx.fillStyle = 'white';
+        ctx.font = 'bold 24px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
@@ -126,11 +125,15 @@ function recognizePuyo(img) {
                 const centerY = Math.floor(y + cellHeight / 2);
 
                 // サンプリングエリア内の平均HSVを取得
-                const result = detectPuyoType(hsv, centerX, centerY, Math.floor(cellWidth * 0.2));
+                const result = detectPuyoType(hsv, centerX, centerY, Math.floor(cellWidth * 0.1));
                 boardResult += result;
 
                 // デバッグ用の枠と文字の描画
                 ctx.strokeRect(x, y, cellWidth, cellHeight);
+                // 文字を見やすくするために影をつける
+                ctx.fillStyle = 'black';
+                ctx.fillText(result, centerX + 1, centerY + 1);
+                ctx.fillStyle = 'white';
                 ctx.fillText(result, centerX, centerY);
             }
         }
@@ -156,38 +159,65 @@ function recognizePuyo(img) {
  * 特定の箇所のぷよの種類を判定する
  */
 function detectPuyoType(hsv, cx, cy, radius) {
-    // 中心付近のピクセルを取得
-    let pixel = hsv.ucharPtr(cy, cx);
-    let h = pixel[0]; // 0-180
-    let s = pixel[1]; // 0-255
-    let v = pixel[2]; // 0-255
+    // 中心付近の複数のピクセルをサンプリングして平均をとる (ノイズ対策)
+    let totalH = 0, totalS = 0, totalV = 0;
+    let count = 0;
+    const sampleRange = 2; // 5x5 エリア
 
-    // 彩度が低い場合は「なし」または「おじゃま」など（今回は「なし」をAとする）
-    if (s < 50) {
-        if (v > 200) return PUYO_MAP['none']; // 白っぽい
+    for (let dy = -sampleRange; dy <= sampleRange; dy++) {
+        for (let dx = -sampleRange; dx <= sampleRange; dx++) {
+            let py = cy + dy;
+            let px = cx + dx;
+            if (py >= 0 && py < hsv.rows && px >= 0 && px < hsv.cols) {
+                let pixel = hsv.ucharPtr(py, px);
+                totalH += pixel[0];
+                totalS += pixel[1];
+                totalV += pixel[2];
+                count++;
+            }
+        }
+    }
+
+    if (count === 0) return 'A';
+
+    let h = totalH / count;
+    let s = totalS / count;
+    let v = totalV / count;
+
+    // 彩度が極端に低い、または明度が極端に低い/高い場合は「なし」または特殊
+    if (s < 40) {
+        if (v > 240) return PUYO_MAP['none']; // 白抜き
+        if (v < 50) return PUYO_MAP['none'];  // 真っ暗
         return PUYO_MAP['none'];
     }
 
-    // HSVによる分岐 (簡易版)
-    // 赤: 0-10, 170-180
-    // 黄: 20-35
-    // 緑: 40-90
-    // 青: 100-130
-    // 紫: 130-160
-    // ハート: ピンク系 (160-170)
-
+    // HSVによる識別 (ぷよクエの配色に合わせた調整)
     let type = 'none';
-    if (h < 10 || h > 170) type = 'red';
-    else if (h >= 20 && h <= 35) type = 'yellow';
-    else if (h >= 40 && h <= 90) type = 'green';
-    else if (h >= 100 && h <= 130) type = 'blue';
-    else if (h > 130 && h <= 160) type = 'purple';
-    else if (h > 160 && h <= 170) type = 'heart';
 
-    // プラスぷよの判定 (中心が非常に明るい、または周囲にプラスの形がある)
-    // ここでは簡易的に V 値が高い（光っている）場合をプラスとする
-    if (type !== 'none' && type !== 'heart' && v > 240) {
-        return PUYO_MAP[type + '_plus'];
+    // 赤: 0-15 または 165-180
+    if (h < 15 || h > 165) {
+        // ハートとの判別 (ハートは少しピンク寄り、彩度がやや低め)
+        if (h > 155 && h < 175 && s < 180) type = 'heart';
+        else type = 'red';
+    }
+    // 黄: 20-40
+    else if (h >= 20 && h < 40) type = 'yellow';
+    // 緑: 40-95
+    else if (h >= 40 && h < 95) type = 'green';
+    // 青: 100-135
+    else if (h >= 100 && h < 135) type = 'blue';
+    // 紫: 135-160
+    else if (h >= 135 && h <= 160) type = 'purple';
+
+    if (type === 'none') return 'A';
+
+    // プラスぷよの判定 (中心部が白く光っていることが多い)
+    // 彩度が低めで、かつ明度が非常に高い状態
+    if (type !== 'none' && type !== 'heart') {
+        // プラスぷよは中心部が白っぽいため、sが少し下がりvが上がる傾向
+        if (v > 220 && s < 220) {
+            return PUYO_MAP[type + '_plus'];
+        }
     }
 
     return PUYO_MAP[type] || 'A';
