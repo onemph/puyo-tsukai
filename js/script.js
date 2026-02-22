@@ -275,41 +275,42 @@ function detectNextPuyos(hsv, width, height) {
     let nextResult = "";
     const ctx = document.getElementById('canvasInput').getContext('2d');
 
-    // ネクストエリアの推定座標 (大幅修正)
-    const nextTop = Math.floor(height * 0.22);
-    const nextBottom = Math.floor(height * 0.275);
-    const nextLeft = Math.floor(width * 0.18);
-    const nextRight = Math.floor(width * 0.82);
+    // ネクストエリアの推定座標 (最上部のアイコン列)
+    const nextTop = Math.floor(height * 0.07);
+    const nextBottom = Math.floor(height * 0.15);
+    const nextLeft = Math.floor(width * 0.12);
+    const nextRight = Math.floor(width * 0.88);
 
     const nextWidth = nextRight - nextLeft;
-    const cellWidth = nextWidth / 5;
+    const cellWidth = nextWidth / 5; // 画面上の5つを認識対象とする
 
     ctx.strokeStyle = 'cyan';
-    ctx.font = '10px Arial';
+    ctx.lineWidth = 2;
 
-    for (let i = 0; i < 8; i++) {
-        const col = i % 5;
-        const centerX = Math.floor(nextLeft + (col + 0.5) * cellWidth);
+    for (let i = 0; i < 5; i++) {
+        const centerX = Math.floor(nextLeft + (i + 0.5) * cellWidth);
         const centerY = Math.floor(nextTop + (nextBottom - nextTop) / 2);
 
-        if (i < 5) {
-            // ネクストも多点サンプリングを適用
-            const result = detectPuyoMultiPoint(hsv, centerX, centerY, Math.floor(cellWidth * 0.2));
-            nextResult += result;
+        // 多点サンプリングを適用 (半径は小さめに)
+        const result = detectPuyoMultiPoint(hsv, centerX, centerY, Math.floor(cellWidth * 0.2));
+        nextResult += result;
 
-            // デバッグ表示
-            ctx.strokeRect(nextLeft + col * cellWidth, nextTop, cellWidth, nextBottom - nextTop);
-            ctx.fillStyle = 'white';
-            ctx.fillText(result, centerX, centerY);
+        // デバッグ表示
+        ctx.strokeRect(nextLeft + i * cellWidth, nextTop, cellWidth, nextBottom - nextTop);
 
-            // HSV表示
-            let avg = getAverageHSV(hsv, centerX, centerY, 1);
-            ctx.fillStyle = 'cyan';
-            ctx.fillText(`H${Math.floor(avg.h)} S${Math.floor(avg.s)}`, centerX, centerY + 18);
-        } else {
-            nextResult += 'A';
-        }
+        // HSV表示
+        let avg = getAverageHSV(hsv, centerX, centerY, 1);
+        ctx.font = '8px Arial';
+        ctx.fillStyle = 'cyan';
+        ctx.fillText(`${result}`, centerX, centerY);
+        ctx.fillText(`H${Math.floor(avg.h)} S${Math.floor(avg.s)}`, centerX, centerY + 12);
     }
+
+    // PuyoSim のネクスト文字列は 8 文字必要なため、残りを A で埋める
+    while (nextResult.length < 8) {
+        nextResult += 'A';
+    }
+
     return nextResult;
 }
 
