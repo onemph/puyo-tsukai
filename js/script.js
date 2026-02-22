@@ -22,6 +22,17 @@ const PUYO_MAP = {
     'purple_plus': 'V'
 };
 
+// OpenCV.js の準備完了を待機するためのポーリング
+function checkOpenCvReady() {
+    if (typeof cv !== 'undefined' && cv.ready) {
+        cv.then(onOpenCvReady);
+    } else if (typeof cv !== 'undefined' && cv.Mat) {
+        onOpenCvReady();
+    } else {
+        setTimeout(checkOpenCvReady, 100);
+    }
+}
+
 /**
  * OpenCV.js の準備完了を待機
  */
@@ -34,7 +45,10 @@ function onOpenCvReady() {
     fileInput.disabled = false;
 }
 
-// OpenCV.js のグローバルコールバック
+// 初期化チェック開始
+checkOpenCvReady();
+
+// OpenCV.js のグローバルコールバック (保険)
 var Module = {
     onRuntimeInitialized: onOpenCvReady
 };
