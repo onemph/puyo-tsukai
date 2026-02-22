@@ -145,8 +145,9 @@ function recognizePuyo(img) {
             }
         }
 
-        // 4. ネクストの認識 (暫定で AAAAAAAA、座標は要調整)
-        const nextResult = detectNextPuyos(hsv, width, height);
+        // 4. ネクストの認識 (盤面の直上 8マスをスキャン)
+        const boardParams = { boardTop, boardLeft, cellWidth, cellHeight };
+        const nextResult = detectNextPuyos(hsv, width, height, boardParams);
 
         generateUrl(nextResult, boardResult);
 
@@ -269,46 +270,45 @@ function detectPuyoType(hsv, cx, cy) {
 }
 
 /**
- * ネクストぷよの認識
+ * ネクストぷよの認識 (盤面のすぐ上の1行 8小をスキャン)
  */
-function detectNextPuyos(hsv, width, height) {
+function detectNextPuyos(hsv, width, height, boardParams) {
     let nextResult = "";
     const ctx = document.getElementById('canvasInput').getContext('2d');
+    const { boardTop, boardLeft, cellWidth, cellHeight } = boardParams;
 
-    // ネクストエリアの推定座標 (最上部のアイコン列)
-    const nextTop = Math.floor(height * 0.07);
-    const nextBottom = Math.floor(height * 0.15);
-    const nextLeft = Math.floor(width * 0.12);
-    const nextRight = Math.floor(width * 0.88);
-
-    const nextWidth = nextRight - nextLeft;
-    const cellWidth = nextWidth / 5; // 画面上の5つを認識対象とする
+    // 盤面のすぐ上、1行分をネクストエリアとする (高さは盤面の 80% 程度)
+    const nextCellHeight = cellHeight * 0.9;
+    const nextBottom = boardTop - Math.floor(cellHeight * 0.05); // 盤面との隙間
+    const nextTop = nextBottom - Math.floor(nextCellHeight);
 
     ctx.strokeStyle = 'cyan';
     ctx.lineWidth = 2;
 
-    for (let i = 0; i < 5; i++) {
-        const centerX = Math.floor(nextLeft + (i + 0.5) * cellWidth);
-        const centerY = Math.floor(nextTop + (nextBottom - nextTop) / 2);
+    for (let i = 0; i < 8; i++) {
+        const x = boardLeft + i * cellWidth;
+        const centerX = Math.floor(x + cellWidth / 2);
+        const centerY = Math.floor(nextTop + nextCellHeight / 2);
 
-        // 多点サンプリングを適用 (半径は小さめに)
+        // 多点サンプリングを適用 (半径はセル幅の 20%)
         const result = detectPuyoMultiPoint(hsv, centerX, centerY, Math.floor(cellWidth * 0.2));
         nextResult += result;
 
         // デバッグ表示
-        ctx.strokeRect(nextLeft + i * cellWidth, nextTop, cellWidth, nextBottom - nextTop);
+        ctx.strokeRect(x, nextTop, cellWidth, nextCellHeight);
+
+        // 結果表示 (小さく)
+        ctx.font = 'bold 16px Arial';
+        ctx.fillStyle = 'black';
+        ctx.fillText(result, centerX + 1, centerY + 1);
+        ctx.fillStyle = (result === 'A') ? '#00ffff' : 'white';
+        ctx.fillText(result, centerX, centerY);
 
         // HSV表示
         let avg = getAverageHSV(hsv, centerX, centerY, 1);
         ctx.font = '8px Arial';
         ctx.fillStyle = 'cyan';
-        ctx.fillText(`${result}`, centerX, centerY);
         ctx.fillText(`H${Math.floor(avg.h)} S${Math.floor(avg.s)}`, centerX, centerY + 12);
-    }
-
-    // PuyoSim のネクスト文字列は 8 文字必要なため、残りを A で埋める
-    while (nextResult.length < 8) {
-        nextResult += 'A';
     }
 
     return nextResult;
