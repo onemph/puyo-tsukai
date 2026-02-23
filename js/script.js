@@ -88,10 +88,10 @@ function recognizePuyo(img) {
         const width = src.cols;
         const height = src.rows;
 
-        // 2. 盤面エリアの推定 (ぷよクエ標準レイアウト: 指示に基づきさらに拡張)
-        // 縦を 58% 〜 99% に広げ、左右の余白を極限まで削る。
-        const boardTop = Math.floor(height * 0.58);
-        const boardBottom = Math.floor(height * 0.99);
+        // 2. 盤面エリアの推定 (ぷよクエ標準レイアウト: 最終微調整)
+        // 縦を 57.5% 〜 98% に設定し、上下位置とセルの高さを最適化。
+        const boardTop = Math.floor(height * 0.575);
+        const boardBottom = Math.floor(height * 0.98);
         const boardLeft = Math.floor(width * 0.015);
         const boardRight = Math.floor(width * 0.985);
 
