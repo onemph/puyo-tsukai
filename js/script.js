@@ -88,12 +88,12 @@ function recognizePuyo(img) {
         const width = src.cols;
         const height = src.rows;
 
-        // 2. 盤面エリアの推定 (ぷよクエ標準レイアウト)
-        // 縦 58.5% 〜 96% 付近が盤面。左右に 5% ずつの余白を想定。
-        const boardTop = Math.floor(height * 0.585);
-        const boardBottom = Math.floor(height * 0.96);
-        const boardLeft = Math.floor(width * 0.05);
-        const boardRight = Math.floor(width * 0.95);
+        // 2. 盤面エリアの推定 (ぷよクエ標準レイアウト: 実機キャプチャに基づき最適化)
+        // 縦 57% 〜 96.5% 付近が盤面。
+        const boardTop = Math.floor(height * 0.57);
+        const boardBottom = Math.floor(height * 0.965);
+        const boardLeft = Math.floor(width * 0.04);
+        const boardRight = Math.floor(width * 0.96);
 
         const boardWidth = boardRight - boardLeft;
         const boardHeight = boardBottom - boardTop;
@@ -277,9 +277,9 @@ function detectNextPuyos(hsv, width, height, boardParams) {
     const ctx = document.getElementById('canvasInput').getContext('2d');
     const { boardTop, boardLeft, cellWidth, cellHeight } = boardParams;
 
-    // 盤面のすぐ上、1行分をネクストエリアとする (高さは盤面の 80% 程度)
-    const nextCellHeight = cellHeight * 0.9;
-    const nextBottom = boardTop - Math.floor(cellHeight * 0.05); // 盤面との隙間
+    // 盤面のすぐ上、1行分をネクストエリアとする (高さは盤面の 55% 程度)
+    const nextCellHeight = cellHeight * 0.55;
+    const nextBottom = boardTop - Math.floor(cellHeight * 0.08); // 盤面との微小な隙間
     const nextTop = nextBottom - Math.floor(nextCellHeight);
 
     ctx.strokeStyle = 'cyan';
