@@ -88,9 +88,9 @@ function recognizePuyo(img) {
         const width = src.cols;
         const height = src.rows;
 
-        // 2. 盤面エリアの推定 (ぷよクエ標準レイアウト: 最終微調整 Ver.3.8)
-        // 底辺を維持しつつ、セルの高さをさらに抑えるために上端を微調整。
-        const boardTop = Math.floor(height * 0.59);
+        // 2. 盤面エリアの推定 (ぷよクエ標準レイアウト: 最終微調整 Ver.3.9)
+        // 底辺を固定し、セルの高さをさらに極限まで抑える。
+        const boardTop = Math.floor(height * 0.605);
         const boardBottom = Math.floor(height * 0.98);
         const boardLeft = Math.floor(width * 0.015);
         const boardRight = Math.floor(width * 0.985);
