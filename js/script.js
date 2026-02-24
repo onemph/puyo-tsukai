@@ -164,29 +164,31 @@ async function recognizePuyo(img) {
 }
 
 /**
- * 画像の内容から盤面の位置を自動的に特定する (Ver.4: 体力バー複数点検知)
+ * 画像の内容から盤面の位置を自動的に特定する (Ver.5: 幅基準スケーリング)
  */
 function calibrateBoardCoordinates(hsv) {
     const width = hsv.cols;
     const height = hsv.rows;
 
+    // 基準幅 640px に対する現在の幅の比率
+    const scaleX = width / 640;
+
     // デフォルト値 (比率ベースのフォールバック)
+    let boardLeft = Math.floor(10 * scaleX);
+    let boardRight = Math.floor(630 * scaleX);
     let boardTop = Math.floor(height * 0.605);
     let boardBottom = Math.floor(height * 0.98);
-    let boardLeft = Math.floor(width * 0.015);
-    let boardRight = Math.floor(width * 0.985);
     let auto = false;
 
     // --- 1. 体力バー(緑色)を複数箇所でスキャンして盤面上部を特定する ---
-    // 6キャラ編成時の中央の隙間を避けるため、複数の列(x座標)をチェックする
     const scanLines = [0.2, 0.4, 0.6, 0.8].map(p => Math.floor(width * p));
     let foundHpBarY = -1;
 
-    for (let y = Math.floor(height * 0.3); y < height * 0.8; y++) {
+    for (let y = Math.floor(height * 0.2); y < height * 0.8; y++) {
         for (let x of scanLines) {
             let pixel = hsv.ucharPtr(y, x);
-            // 緑色の判定 (H: 40-90, S: 80+, V: 80+)
-            if (pixel[0] > 40 && pixel[0] < 90 && pixel[1] > 80 && pixel[2] > 80) {
+            // 緑色の判定 (H: 35-95, S: 70+, V: 70+) - 範囲を少し広げて確実に捉える
+            if (pixel[0] > 35 && pixel[0] < 95 && pixel[1] > 70 && pixel[2] > 70) {
                 foundHpBarY = y;
                 break;
             }
@@ -195,9 +197,9 @@ function calibrateBoardCoordinates(hsv) {
     }
 
     if (foundHpBarY !== -1) {
-        // 緑色の体力バーが見つかったら、その少し下（ステータス表示エリア分）を盤面の開始とする
-        // 640x1136時の実測で、バーから盤面開始まで約60px (高さの約5.3%)
-        const offset = Math.floor(height * 0.053);
+        // 重要: オフセットは「高さ」ではなく「幅」に比例させる
+        // 640x1136時の実測で約57px = 幅の約 8.9%
+        const offset = Math.floor(width * 0.089);
         boardTop = foundHpBarY + offset;
         auto = true;
     }
@@ -205,22 +207,28 @@ function calibrateBoardCoordinates(hsv) {
     // --- 2. 下から上にスキャンして盤面下部を特定する ---
     let foundBottomY = -1;
     const midX = Math.floor(width / 2);
-    for (let y = height - 10; y > height * 0.7; y--) {
+    // 画面の一番下からスキャンして、最初に何らかのオブジェクトが見つかる場所を探す
+    for (let y = height - 5; y > boardTop + 100; y--) {
         let pixel = hsv.ucharPtr(y, midX);
-        if (pixel[2] > 50) { // 下端付近の何らかの描画（ぷよ等）を探す
+        if (pixel[2] > 50) { // 明度が一定以上ある地点
             foundBottomY = y;
             break;
         }
     }
     if (foundBottomY !== -1) {
         boardBottom = foundBottomY;
+        // 異常に長い場合は比率で補正 (8:6比率 * 余裕分)
+        const expectedHeight = (boardRight - boardLeft) * (6 / 8) * 1.15;
+        if (boardBottom - boardTop > expectedHeight) {
+            boardBottom = boardTop + Math.floor(expectedHeight);
+        }
     }
 
-    // スケールの計算 (座標ベース)
+    // スケールの計算 (標準盤面高さ 426px に対する比)
     const refBoardHeight = 426;
     const currentBoardHeight = boardBottom - boardTop;
     let scale = currentBoardHeight / refBoardHeight;
-    if (scale < 0.5 || scale > 3.0) scale = 1.0;
+    if (scale < 0.3 || scale > 5.0) scale = scaleX;
 
     return { boardTop, boardBottom, boardLeft, boardRight, scale, auto };
 }
