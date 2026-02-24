@@ -82,22 +82,32 @@ async function recognizePuyo(img) {
     status.innerText = 'テンプレートを読み込み中...';
 
     try {
-        // テンプレート画像のロード
-        const templateImg = await new Promise((resolve, reject) => {
-            const tImg = new Image();
-            tImg.onload = () => resolve(tImg);
-            tImg.onerror = () => reject(new Error('テンプレート画像 (assets/menu_template.png) の読み込みに失敗しました'));
-            tImg.src = 'assets/menu_template.png';
-        });
+        // テンプレート画像のロード (MENUボタンとNEXTバー)
+        const [menuImg, nextImg] = await Promise.all([
+            new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error('assets/menu_template.png の読み込みに失敗しました'));
+                img.src = 'assets/menu_template.png';
+            }),
+            new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error('assets/next_template.png の読み込みに失敗しました'));
+                img.src = 'assets/next_template.png';
+            })
+        ]);
 
         let src = cv.imread('canvasInput');
-        let templ = cv.imread(templateImg);
+        let tMenu = cv.imread(menuImg);
+        let tNext = cv.imread(nextImg);
 
         status.innerText = '盤面を解析中...';
 
-        // 座標の自動校正 (テンプレートマッチング)
-        const coords = calibrateBoardCoordinates(src, templ);
-        templ.delete(); // 使い終わったテンプレートを解放
+        // 座標の自動校正 (マルチスケール & マルチアンカー)
+        const coords = calibrateBoardCoordinates(src, tMenu, tNext);
+        tMenu.delete();
+        tNext.delete();
 
         if (!coords.auto) {
             throw new Error("テンプレートマッチングに失敗しました。画像が正しくないか、テンプレートと一致しません。");
@@ -165,81 +175,81 @@ async function recognizePuyo(img) {
 }
 
 /**
- * テンプレートマッチングを用いて座標を特定する (Ver.7: マルチスケール・テンプレートマッチング)
+ * テンプレートマッチングを用いて座標を特定する (Ver.8: マルチアンカー)
  */
-function calibrateBoardCoordinates(src, templ) {
+function calibrateBoardCoordinates(src, tMenu, tNext) {
     const width = src.cols;
     const height = src.rows;
 
-    let bestMaxVal = -1;
-    let bestMaxPoint = null;
-    let bestScale = -1;
+    // 1. まずMENUボタンで全体スケールを特定する
+    let bestMenuMatch = findBestMatch(src, tMenu, [0.9, 1.0, 1.1]);
+    if (bestMenuMatch.maxVal < 0.6) return { auto: false };
 
-    // 処理軽減のためグレースケール化
+    const scale = bestMenuMatch.scale;
+    console.log("Menu match Scale:", scale);
+
+    // 2. NEXTバー（盤面直上のバー）を探して盤面位置を特定する
+    // 探索範囲を限定（中央付近〜下部）して精度と速度を向上
+    let bestNextMatch = findBestMatch(src, tNext, [scale]); // スケールは固定
+
+    // NEXTバーが見つかった場合、それを基準に盤面を配置
+    if (bestNextMatch.maxVal > 0.6) {
+        console.log("Next match found, using as local anchor.");
+        const nx = bestNextMatch.maxPoint.x;
+        const ny = bestNextMatch.maxPoint.y;
+        const nh = tNext.rows * scale;
+
+        // NEXTバーのすぐ下が盤面 (実測値に基づき微調整)
+        const boardTop = ny + nh - (2 * scale);
+        const boardLeft = nx + (10 * scale);
+        const boardRight = nx + (630 * scale);
+        const boardBottom = boardTop + (426 * scale);
+
+        return { boardTop, boardBottom, boardLeft, boardRight, scale, auto: true };
+    }
+
+    // NEXTバーが見つからない場合のフォールバック（MENUからの相対位置）
+    const anchorX = bestMenuMatch.maxPoint.x;
+    const anchorY = bestMenuMatch.maxPoint.y;
+    const relTop = 640;
+    const boardLeft = anchorX + (-18 * scale);
+    const boardTop = anchorY + (relTop * scale);
+    const boardRight = anchorX + (602 * scale);
+    const boardBottom = boardTop + (426 * scale);
+
+    return { boardTop, boardBottom, boardLeft, boardRight, scale, auto: true };
+}
+
+/**
+ * 指定したスケール群から最適なマッチングを探すヘルパー
+ */
+function findBestMatch(src, templ, relativeScales) {
+    let best = { maxVal: -1, maxPoint: null, scale: -1 };
     let srcGray = new cv.Mat();
     cv.cvtColor(src, srcGray, cv.COLOR_RGBA2GRAY);
 
-    // 1. スピードと精度のバランスを取るため、推定スケールの前後をスキャン
-    const baseScale = width / 640;
-    const testScales = [0.9, 0.95, 1.0, 1.05, 1.1].map(s => s * baseScale);
-
-    for (let s of testScales) {
+    const baseScale = src.cols / 640;
+    for (let rs of relativeScales) {
+        const s = rs * baseScale;
         let resizedTempl = new cv.Mat();
-        let tw = Math.floor(templ.cols * s);
-        let th = Math.floor(templ.rows * s);
-        if (tw <= 0 || th <= 0) continue;
-
-        cv.resize(templ, resizedTempl, new cv.Size(tw, th), 0, 0, cv.INTER_LINEAR);
-        let templGray = new cv.Mat();
-        cv.cvtColor(resizedTempl, templGray, cv.COLOR_RGBA2GRAY);
+        cv.resize(templ, resizedTempl, new cv.Size(Math.floor(templ.cols * s), Math.floor(templ.rows * s)), 0, 0, cv.INTER_LINEAR);
+        let tGray = new cv.Mat();
+        cv.cvtColor(resizedTempl, tGray, cv.COLOR_RGBA2GRAY);
 
         let dst = new cv.Mat();
         let mask = new cv.Mat();
-        cv.matchTemplate(srcGray, templGray, dst, cv.TM_CCOEFF_NORMED, mask);
+        cv.matchTemplate(srcGray, tGray, dst, cv.TM_CCOEFF_NORMED, mask);
         let result = cv.minMaxLoc(dst, mask);
 
-        if (result.maxVal > bestMaxVal) {
-            bestMaxVal = result.maxVal;
-            bestMaxPoint = result.maxLoc;
-            bestScale = s;
+        if (result.maxVal > best.maxVal) {
+            best = { maxVal: result.maxVal, maxPoint: result.maxLoc, scale: s };
         }
 
-        dst.delete(); mask.delete(); templGray.delete(); resizedTempl.delete();
-
-        // 非常に高い一致が得られたら早期終了
-        if (bestMaxVal > 0.98) break;
+        dst.delete(); mask.delete(); tGray.delete(); resizedTempl.delete();
+        if (best.maxVal > 0.98) break;
     }
-
     srcGray.delete();
-    console.log("Multi-scale Template Match result:", { maxVal: bestMaxVal, scale: bestScale });
-
-    // 閾値を下回る場合は解析不可
-    if (bestMaxVal < 0.65) {
-        return { auto: false };
-    }
-
-    // アンカー位置 (見つかったスケールにおけるMENUボタンの左上)
-    const anchorX = bestMaxPoint.x;
-    const anchorY = bestMaxPoint.y;
-
-    // 盤面位置の計算 (MENUボタンからの相対距離)
-    // 基準 (640px幅): MENU(28, 48), 盤面(10, 684) -> 相対 dx: -18, dy: +636
-    // ※ ユーザーの切り抜きサイズ(113x48)に合わせて微調整
-    const relLeft = -18;
-    const relTop = 640;
-    const relRight = 602;
-    const relBottom = 1066;
-
-    const boardLeft = anchorX + (relLeft * bestScale);
-    const boardTop = anchorY + (relTop * bestScale);
-    const boardRight = anchorX + (relRight * bestScale);
-    const boardBottom = anchorY + (relBottom * bestScale);
-
-    return {
-        boardTop, boardBottom, boardLeft, boardRight,
-        scale: bestScale,
-        auto: true
-    };
+    return best;
 }
 
 
