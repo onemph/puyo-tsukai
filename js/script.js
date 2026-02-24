@@ -169,7 +169,9 @@ async function recognizePuyo(img) {
         status.className = 'status ready';
     } catch (err) {
         console.error(err);
-        status.innerText = '解析エラー: ' + err.message;
+        // OpenCV.jsのエラーは文字列や数値の場合があるため、適切に表示
+        let msg = err instanceof Error ? err.message : String(err);
+        status.innerText = '解析エラー: ' + msg;
         status.className = 'status error';
     }
 }
@@ -181,25 +183,29 @@ function calibrateBoardCoordinates(src, tMenu, tNext) {
     const width = src.cols;
     const height = src.rows;
 
-    // 1. まずMENUボタンで全体スケールを特定する
-    let bestMenuMatch = findBestMatch(src, tMenu, [0.9, 1.0, 1.1]);
+    // 1. まずMENUボタンで全体スケールを特定する (画面上部 30% を探す)
+    let bestMenuMatch = findBestMatch(src, tMenu, [0.9, 1.0, 1.1], { y: 0, height: Math.floor(height * 0.3) });
+    if (bestMenuMatch.maxVal < 0.6) {
+        // 全体検索でフォールバック
+        bestMenuMatch = findBestMatch(src, tMenu, [0.9, 1.0, 1.1]);
+    }
+
     if (bestMenuMatch.maxVal < 0.6) return { auto: false };
 
     const scale = bestMenuMatch.scale;
-    console.log("Menu match Scale:", scale);
+    console.log("Anchor match result:", { menuVal: bestMenuMatch.maxVal, scale });
 
-    // 2. NEXTバー（盤面直上のバー）を探して盤面位置を特定する
-    // 探索範囲を限定（中央付近〜下部）して精度と速度を向上
-    let bestNextMatch = findBestMatch(src, tNext, [scale]); // スケールは固定
+    // 2. NEXTバー（盤面直上のバー）を探す (画面中央〜下部 70% を探す)
+    let bestNextMatch = findBestMatch(src, tNext, [1.0], { y: Math.floor(height * 0.3), height: Math.floor(height * 0.7) });
 
-    // NEXTバーが見つかった場合、それを基準に盤面を配置
+    // NEXTバーが見つかった場合
     if (bestNextMatch.maxVal > 0.6) {
-        console.log("Next match found, using as local anchor.");
+        console.log("Next match found:", bestNextMatch.maxVal);
         const nx = bestNextMatch.maxPoint.x;
         const ny = bestNextMatch.maxPoint.y;
         const nh = tNext.rows * scale;
 
-        // NEXTバーのすぐ下が盤面 (実測値に基づき微調整)
+        // NEXTバーのすぐ下が盤面
         const boardTop = ny + nh - (2 * scale);
         const boardLeft = nx + (10 * scale);
         const boardRight = nx + (630 * scale);
@@ -222,17 +228,33 @@ function calibrateBoardCoordinates(src, tMenu, tNext) {
 
 /**
  * 指定したスケール群から最適なマッチングを探すヘルパー
+ * @param {cv.Mat} src 検索対象画像
+ * @param {cv.Mat} templ テンプレート画像
+ * @param {Array} relativeScales 試行する相対スケール ([0.9, 1.0, 1.1] など)
+ * @param {Object} roi 検索範囲 {y, height} (省略時は全体)
  */
-function findBestMatch(src, templ, relativeScales) {
+function findBestMatch(src, templ, relativeScales, roi = null) {
     let best = { maxVal: -1, maxPoint: null, scale: -1 };
+
+    let searchArea = src;
+    if (roi) {
+        searchArea = src.roi(new cv.Rect(0, roi.y, src.cols, roi.height));
+    }
+
     let srcGray = new cv.Mat();
-    cv.cvtColor(src, srcGray, cv.COLOR_RGBA2GRAY);
+    cv.cvtColor(searchArea, srcGray, cv.COLOR_RGBA2GRAY);
 
     const baseScale = src.cols / 640;
     for (let rs of relativeScales) {
         const s = rs * baseScale;
+        let tw = Math.floor(templ.cols * s);
+        let th = Math.floor(templ.rows * s);
+
+        // テンプレートがソースより大きい場合はスキップ（OpenCVの例外回避）
+        if (tw >= srcGray.cols || th >= srcGray.rows || tw <= 0 || th <= 0) continue;
+
         let resizedTempl = new cv.Mat();
-        cv.resize(templ, resizedTempl, new cv.Size(Math.floor(templ.cols * s), Math.floor(templ.rows * s)), 0, 0, cv.INTER_LINEAR);
+        cv.resize(templ, resizedTempl, new cv.Size(tw, th), 0, 0, cv.INTER_LINEAR);
         let tGray = new cv.Mat();
         cv.cvtColor(resizedTempl, tGray, cv.COLOR_RGBA2GRAY);
 
@@ -242,13 +264,18 @@ function findBestMatch(src, templ, relativeScales) {
         let result = cv.minMaxLoc(dst, mask);
 
         if (result.maxVal > best.maxVal) {
-            best = { maxVal: result.maxVal, maxPoint: result.maxLoc, scale: s };
+            // ROIを使用している場合は座標をオフセット
+            let point = { x: result.maxLoc.x, y: result.maxLoc.y + (roi ? roi.y : 0) };
+            best = { maxVal: result.maxVal, maxPoint: point, scale: s };
         }
 
         dst.delete(); mask.delete(); tGray.delete(); resizedTempl.delete();
-        if (best.maxVal > 0.98) break;
+        if (best.maxVal > 0.99) break;
     }
+
     srcGray.delete();
+    if (roi) searchArea.delete();
+
     return best;
 }
 
