@@ -165,59 +165,79 @@ async function recognizePuyo(img) {
 }
 
 /**
- * テンプレートマッチングを用いて座標を特定する (Ver.6: テンプレートマッチング)
+ * テンプレートマッチングを用いて座標を特定する (Ver.7: マルチスケール・テンプレートマッチング)
  */
 function calibrateBoardCoordinates(src, templ) {
     const width = src.cols;
     const height = src.rows;
 
-    // 1. テンプレートマッチングの実行 (MENUボタンを探す)
+    let bestMaxVal = -1;
+    let bestMaxPoint = null;
+    let bestScale = -1;
+
+    // 処理軽減のためグレースケール化
     let srcGray = new cv.Mat();
-    let templGray = new cv.Mat();
     cv.cvtColor(src, srcGray, cv.COLOR_RGBA2GRAY);
-    cv.cvtColor(templ, templGray, cv.COLOR_RGBA2GRAY);
 
-    let dst = new cv.Mat();
-    let mask = new cv.Mat();
-    cv.matchTemplate(srcGray, templGray, dst, cv.TM_CCOEFF_NORMED, mask);
-    let result = cv.minMaxLoc(dst, mask);
-    let maxPoint = result.maxLoc;
-    let maxVal = result.maxVal;
+    // 1. スピードと精度のバランスを取るため、推定スケールの前後をスキャン
+    const baseScale = width / 640;
+    const testScales = [0.9, 0.95, 1.0, 1.05, 1.1].map(s => s * baseScale);
 
-    dst.delete(); mask.delete(); srcGray.delete(); templGray.delete();
+    for (let s of testScales) {
+        let resizedTempl = new cv.Mat();
+        let tw = Math.floor(templ.cols * s);
+        let th = Math.floor(templ.rows * s);
+        if (tw <= 0 || th <= 0) continue;
 
-    console.log("Template Match maxVal:", maxVal);
+        cv.resize(templ, resizedTempl, new cv.Size(tw, th), 0, 0, cv.INTER_LINEAR);
+        let templGray = new cv.Mat();
+        cv.cvtColor(resizedTempl, templGray, cv.COLOR_RGBA2GRAY);
+
+        let dst = new cv.Mat();
+        let mask = new cv.Mat();
+        cv.matchTemplate(srcGray, templGray, dst, cv.TM_CCOEFF_NORMED, mask);
+        let result = cv.minMaxLoc(dst, mask);
+
+        if (result.maxVal > bestMaxVal) {
+            bestMaxVal = result.maxVal;
+            bestMaxPoint = result.maxLoc;
+            bestScale = s;
+        }
+
+        dst.delete(); mask.delete(); templGray.delete(); resizedTempl.delete();
+
+        // 非常に高い一致が得られたら早期終了
+        if (bestMaxVal > 0.98) break;
+    }
+
+    srcGray.delete();
+    console.log("Multi-scale Template Match result:", { maxVal: bestMaxVal, scale: bestScale });
 
     // 閾値を下回る場合は解析不可
-    if (maxVal < 0.6) {
+    if (bestMaxVal < 0.65) {
         return { auto: false };
     }
 
-    // アンカー位置 (MENUボタンの左上)
-    const anchorX = maxPoint.x;
-    const anchorY = maxPoint.y;
-
-    // スケールの推定 (画面の横幅から)
-    // 640px基準での倍率を計算
-    const scale = width / 640;
+    // アンカー位置 (見つかったスケールにおけるMENUボタンの左上)
+    const anchorX = bestMaxPoint.x;
+    const anchorY = bestMaxPoint.y;
 
     // 盤面位置の計算 (MENUボタンからの相対距離)
-    // 基準 (640x1136): MENU(28, 48), 盤面(10, 684) -> 相対 dx: -18, dy: +636
-    // 基準 (640x1136): 盤面右下(630, 1110) -> 相対 dx: +602, dy: +1062
-
+    // 基準 (640px幅): MENU(28, 48), 盤面(10, 684) -> 相対 dx: -18, dy: +636
+    // ※ ユーザーの切り抜きサイズ(113x48)に合わせて微調整
     const relLeft = -18;
-    const relTop = 636; // MENU上端から盤面上端までのピクセル数
+    const relTop = 640;
     const relRight = 602;
-    const relBottom = 1062;
+    const relBottom = 1066;
 
-    const boardLeft = anchorX + (relLeft * scale);
-    const boardTop = anchorY + (relTop * scale);
-    const boardRight = anchorX + (relRight * scale);
-    const boardBottom = anchorY + (relBottom * scale);
+    const boardLeft = anchorX + (relLeft * bestScale);
+    const boardTop = anchorY + (relTop * bestScale);
+    const boardRight = anchorX + (relRight * bestScale);
+    const boardBottom = anchorY + (relBottom * bestScale);
 
     return {
         boardTop, boardBottom, boardLeft, boardRight,
-        scale,
+        scale: bestScale,
         auto: true
     };
 }
