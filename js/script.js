@@ -164,7 +164,7 @@ async function recognizePuyo(img) {
 }
 
 /**
- * 画像の内容から盤面の位置を自動的に特定する
+ * 画像の内容から盤面の位置を自動的に特定する (Ver.4: 体力バー複数点検知)
  */
 function calibrateBoardCoordinates(hsv) {
     const width = hsv.cols;
@@ -177,41 +177,37 @@ function calibrateBoardCoordinates(hsv) {
     let boardRight = Math.floor(width * 0.985);
     let auto = false;
 
-    // --- 1. 盤面直上の「ステータスバー(黒い帯)」をスキャンして盤面上部を特定する ---
-    // 画面中央付近を上から下へスキャン。非常に暗い色(V < 35)の連続を探す。
-    let statsBarY = -1;
-    const scanX1 = Math.floor(width * 0.2);
-    const scanX2 = Math.floor(width * 0.5);
-    const scanX3 = Math.floor(width * 0.8);
+    // --- 1. 体力バー(緑色)を複数箇所でスキャンして盤面上部を特定する ---
+    // 6キャラ編成時の中央の隙間を避けるため、複数の列(x座標)をチェックする
+    const scanLines = [0.2, 0.4, 0.6, 0.8].map(p => Math.floor(width * p));
+    let foundHpBarY = -1;
 
-    for (let y = Math.floor(height * 0.4); y < height * 0.8; y++) {
-        let p1 = hsv.ucharPtr(y, scanX1);
-        let p2 = hsv.ucharPtr(y, scanX2);
-        let p3 = hsv.ucharPtr(y, scanX3);
-
-        // V(明度)が3箇所とも極端に低い = 黒い帯の可能性が高い
-        if (p1[2] < 35 && p2[2] < 35 && p3[2] < 35) {
-            // 黒い帯の終わりを探す
-            let endY = y;
-            for (let ey = y; ey < y + 100 && ey < height; ey++) {
-                let ep = hsv.ucharPtr(ey, scanX2);
-                if (ep[2] > 60) { // 明度が上がった = 帯が終わった
-                    endY = ey;
-                    break;
-                }
+    for (let y = Math.floor(height * 0.3); y < height * 0.8; y++) {
+        for (let x of scanLines) {
+            let pixel = hsv.ucharPtr(y, x);
+            // 緑色の判定 (H: 40-90, S: 80+, V: 80+)
+            if (pixel[0] > 40 && pixel[0] < 90 && pixel[1] > 80 && pixel[2] > 80) {
+                foundHpBarY = y;
+                break;
             }
-            boardTop = endY + 2;
-            auto = true;
-            break;
         }
+        if (foundHpBarY !== -1) break;
+    }
+
+    if (foundHpBarY !== -1) {
+        // 緑色の体力バーが見つかったら、その少し下（ステータス表示エリア分）を盤面の開始とする
+        // 640x1136時の実測で、バーから盤面開始まで約60px (高さの約5.3%)
+        const offset = Math.floor(height * 0.053);
+        boardTop = foundHpBarY + offset;
+        auto = true;
     }
 
     // --- 2. 下から上にスキャンして盤面下部を特定する ---
     let foundBottomY = -1;
+    const midX = Math.floor(width / 2);
     for (let y = height - 10; y > height * 0.7; y--) {
-        let pixel = hsv.ucharPtr(y, scanX2);
-        // 彩度がある程度高い地点(ぷよ or 枠)を探す
-        if (pixel[2] > 50) {
+        let pixel = hsv.ucharPtr(y, midX);
+        if (pixel[2] > 50) { // 下端付近の何らかの描画（ぷよ等）を探す
             foundBottomY = y;
             break;
         }
