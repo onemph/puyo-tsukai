@@ -165,7 +165,7 @@ async function recognizePuyo(img) {
         hsv.delete();
         src.delete();
 
-        status.innerText = '解析完了 (テンプレート校正)';
+        status.innerText = '解析完了';
         status.className = 'status ready';
     } catch (err) {
         console.error(err);
