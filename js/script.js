@@ -397,7 +397,7 @@ function detectNextPuyos(hsv, width, height, boardParams) {
 
     // 盤面のすぐ上、1行分をネクストエリアとする (高さは盤面の 55% 程度)
     const nextCellHeight = cellHeight * 0.55;
-    const nextBottom = boardTop + Math.floor(cellHeight * 0.05); // 盤面と少し重なる程度に下げて中心を合わせる
+    const nextBottom = boardTop - Math.floor(cellHeight * 0.02); // 下げすぎた分を半分ほど戻す (中心合わせ)
     const nextTop = nextBottom - Math.floor(nextCellHeight);
 
     ctx.strokeStyle = 'cyan';
