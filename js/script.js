@@ -75,41 +75,53 @@ document.getElementById('fileInput').addEventListener('change', (e) => {
 });
 
 /**
- * ぷよ認識のメインロジック (自動座標校正 Ver.2)
+ * ぷよ認識のメインロジック (テンプレートマッチング Ver.1)
  */
 async function recognizePuyo(img) {
     const status = document.getElementById('status');
-    status.innerText = '盤面を解析中...';
+    status.innerText = 'テンプレートを読み込み中...';
 
     try {
-        let src = cv.imread('canvasInput');
-        const width = src.cols;
-        const height = src.rows;
+        // テンプレート画像のロード
+        const templateImg = await new Promise((resolve, reject) => {
+            const tImg = new Image();
+            tImg.onload = () => resolve(tImg);
+            tImg.onerror = () => reject(new Error('テンプレート画像 (assets/menu_template.png) の読み込みに失敗しました'));
+            tImg.src = 'assets/menu_template.png';
+        });
 
-        // HSV に変換
+        let src = cv.imread('canvasInput');
+        let templ = cv.imread(templateImg);
+
+        status.innerText = '盤面を解析中...';
+
+        // 座標の自動校正 (テンプレートマッチング)
+        const coords = calibrateBoardCoordinates(src, templ);
+        templ.delete(); // 使い終わったテンプレートを解放
+
+        if (!coords.auto) {
+            throw new Error("テンプレートマッチングに失敗しました。画像が正しくないか、テンプレートと一致しません。");
+        }
+
+        // HSV に変換 (判定用)
         let hsv = new cv.Mat();
         cv.cvtColor(src, hsv, cv.COLOR_RGBA2RGB);
         cv.cvtColor(hsv, hsv, cv.COLOR_RGB2HSV);
 
-        // 1. 座標の自動校正 (HPバーやUIをスキャンして盤面位置を特定)
-        const coords = calibrateBoardCoordinates(hsv);
-
-        const { boardTop, boardBottom, boardLeft, boardRight, scale, auto } = coords;
-        console.log("Calibrated coordinates:", coords);
+        const { boardTop, boardBottom, boardLeft, boardRight, scale } = coords;
+        console.log("Calibrated coordinates (Template Match):", coords);
 
         const boardWidth = boardRight - boardLeft;
         const boardHeight = boardBottom - boardTop;
 
-        const cellWidth = boardWidth / 8; // 横8列
-        const cellHeight = boardHeight / 6; // 縦6行
+        const cellWidth = boardWidth / 8;
+        const cellHeight = boardHeight / 6;
 
         let boardResult = "";
 
-        // 2. 各セルをスキャン
         let canvas = document.getElementById('canvasInput');
         let ctx = canvas.getContext('2d');
 
-        // 描画設定をスケールに合わせる
         const fontSize = Math.max(12, Math.floor(24 * scale));
         ctx.lineWidth = Math.max(1, 2 * scale);
         ctx.font = `bold ${fontSize}px Arial`;
@@ -123,38 +135,27 @@ async function recognizePuyo(img) {
                 const centerX = Math.floor(x + cellWidth / 2);
                 const centerY = Math.floor(y + cellHeight / 2);
 
-                // 多点サンプリングによる認識
                 const result = detectPuyoMultiPoint(hsv, centerX, centerY, Math.floor(cellWidth * 0.3));
                 boardResult += result;
 
-                // デバッグ用の枠と文字
                 ctx.strokeStyle = (result === 'A') ? 'red' : 'rgba(255, 255, 255, 0.8)';
                 ctx.strokeRect(x, y, cellWidth, cellHeight);
-
                 ctx.fillStyle = 'black';
                 ctx.fillText(result, centerX + 1, centerY + 1);
                 ctx.fillStyle = (result === 'A') ? '#ff4d4d' : 'white';
                 ctx.fillText(result, centerX, centerY);
-
-                // HSV情報の常時表示 (極小)
-                let avg = getAverageHSV(hsv, centerX, centerY, 1);
-                ctx.font = `${Math.floor(8 * scale)}px Arial`;
-                ctx.fillStyle = 'yellow';
-                ctx.fillText(`H${Math.floor(avg.h)} S${Math.floor(avg.s)}`, centerX, centerY + Math.floor(18 * scale));
-                ctx.font = `bold ${fontSize}px Arial`;
             }
         }
 
-        // 3. ネクストの認識
         const boardParams = { boardTop, boardLeft, cellWidth, cellHeight, scale };
-        const nextResult = detectNextPuyos(hsv, width, height, boardParams);
+        const nextResult = detectNextPuyos(hsv, src.cols, src.rows, boardParams);
 
         generateUrl(nextResult, boardResult);
 
         hsv.delete();
         src.delete();
 
-        status.innerText = '解析完了 (' + (coords.auto ? '自動校正' : '標準') + ')';
+        status.innerText = '解析完了 (テンプレート校正)';
         status.className = 'status ready';
     } catch (err) {
         console.error(err);
@@ -164,73 +165,61 @@ async function recognizePuyo(img) {
 }
 
 /**
- * 画像の内容から盤面の位置を自動的に特定する (Ver.5: 幅基準スケーリング)
+ * テンプレートマッチングを用いて座標を特定する (Ver.6: テンプレートマッチング)
  */
-function calibrateBoardCoordinates(hsv) {
-    const width = hsv.cols;
-    const height = hsv.rows;
+function calibrateBoardCoordinates(src, templ) {
+    const width = src.cols;
+    const height = src.rows;
 
-    // 基準幅 640px に対する現在の幅の比率
-    const scaleX = width / 640;
+    // 1. テンプレートマッチングの実行 (MENUボタンを探す)
+    let srcGray = new cv.Mat();
+    let templGray = new cv.Mat();
+    cv.cvtColor(src, srcGray, cv.COLOR_RGBA2GRAY);
+    cv.cvtColor(templ, templGray, cv.COLOR_RGBA2GRAY);
 
-    // デフォルト値 (比率ベースのフォールバック)
-    let boardLeft = Math.floor(10 * scaleX);
-    let boardRight = Math.floor(630 * scaleX);
-    let boardTop = Math.floor(height * 0.605);
-    let boardBottom = Math.floor(height * 0.98);
-    let auto = false;
+    let dst = new cv.Mat();
+    let mask = new cv.Mat();
+    cv.matchTemplate(srcGray, templGray, dst, cv.TM_CCOEFF_NORMED, mask);
+    let result = cv.minMaxLoc(dst, mask);
+    let maxPoint = result.maxLoc;
+    let maxVal = result.maxVal;
 
-    // --- 1. 体力バー(緑色)を複数箇所でスキャンして盤面上部を特定する ---
-    const scanLines = [0.2, 0.4, 0.6, 0.8].map(p => Math.floor(width * p));
-    let foundHpBarY = -1;
+    dst.delete(); mask.delete(); srcGray.delete(); templGray.delete();
 
-    for (let y = Math.floor(height * 0.2); y < height * 0.8; y++) {
-        for (let x of scanLines) {
-            let pixel = hsv.ucharPtr(y, x);
-            // 緑色の判定 (H: 35-95, S: 70+, V: 70+) - 範囲を少し広げて確実に捉える
-            if (pixel[0] > 35 && pixel[0] < 95 && pixel[1] > 70 && pixel[2] > 70) {
-                foundHpBarY = y;
-                break;
-            }
-        }
-        if (foundHpBarY !== -1) break;
+    console.log("Template Match maxVal:", maxVal);
+
+    // 閾値を下回る場合は解析不可
+    if (maxVal < 0.6) {
+        return { auto: false };
     }
 
-    if (foundHpBarY !== -1) {
-        // 重要: オフセットは「高さ」ではなく「幅」に比例させる
-        // 640x1136時の実測で約57px = 幅の約 8.9%
-        const offset = Math.floor(width * 0.089);
-        boardTop = foundHpBarY + offset;
-        auto = true;
-    }
+    // アンカー位置 (MENUボタンの左上)
+    const anchorX = maxPoint.x;
+    const anchorY = maxPoint.y;
 
-    // --- 2. 下から上にスキャンして盤面下部を特定する ---
-    let foundBottomY = -1;
-    const midX = Math.floor(width / 2);
-    // 画面の一番下からスキャンして、最初に何らかのオブジェクトが見つかる場所を探す
-    for (let y = height - 5; y > boardTop + 100; y--) {
-        let pixel = hsv.ucharPtr(y, midX);
-        if (pixel[2] > 50) { // 明度が一定以上ある地点
-            foundBottomY = y;
-            break;
-        }
-    }
-    if (foundBottomY !== -1) {
-        boardBottom = foundBottomY;
-        // 異常に長い場合は比率で補正 (8:6比率 * 余裕分)
-        const expectedHeight = (boardRight - boardLeft) * (6 / 8) * 1.15;
-        if (boardBottom - boardTop > expectedHeight) {
-            boardBottom = boardTop + Math.floor(expectedHeight);
-        }
-    }
+    // スケールの推定 (画面の横幅から)
+    // 640px基準での倍率を計算
+    const scale = width / 640;
 
-    // スケールの計算 (標準盤面高さ 426px に対する比)
-    const refBoardHeight = 426;
-    const currentBoardHeight = boardBottom - boardTop;
-    let scale = currentBoardHeight / refBoardHeight;
-    if (scale < 0.3 || scale > 5.0) scale = scaleX;
+    // 盤面位置の計算 (MENUボタンからの相対距離)
+    // 基準 (640x1136): MENU(28, 48), 盤面(10, 684) -> 相対 dx: -18, dy: +636
+    // 基準 (640x1136): 盤面右下(630, 1110) -> 相対 dx: +602, dy: +1062
 
-    return { boardTop, boardBottom, boardLeft, boardRight, scale, auto };
+    const relLeft = -18;
+    const relTop = 636; // MENU上端から盤面上端までのピクセル数
+    const relRight = 602;
+    const relBottom = 1062;
+
+    const boardLeft = anchorX + (relLeft * scale);
+    const boardTop = anchorY + (relTop * scale);
+    const boardRight = anchorX + (relRight * scale);
+    const boardBottom = anchorY + (relBottom * scale);
+
+    return {
+        boardTop, boardBottom, boardLeft, boardRight,
+        scale,
+        auto: true
+    };
 }
 
 
