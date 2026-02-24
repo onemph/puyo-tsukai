@@ -177,32 +177,41 @@ function calibrateBoardCoordinates(hsv) {
     let boardRight = Math.floor(width * 0.985);
     let auto = false;
 
-    // --- 1. HPバー(緑)をスキャンして盤面上部を特定する ---
-    // 画面中央付近を上から下へスキャン。緑色(HSV H=60付近)の連続を探す
-    let foundHpBarY = -1;
-    const centerX = Math.floor(width / 2);
-    for (let y = Math.floor(height * 0.3); y < height * 0.8; y++) {
-        let pixel = hsv.ucharPtr(y, centerX);
-        // H: 50-80 (緑), S: 100+, V: 100+
-        if (pixel[0] > 45 && pixel[0] < 85 && pixel[1] > 100 && pixel[2] > 100) {
-            foundHpBarY = y;
+    // --- 1. 盤面直上の「ステータスバー(黒い帯)」をスキャンして盤面上部を特定する ---
+    // 画面中央付近を上から下へスキャン。非常に暗い色(V < 35)の連続を探す。
+    let statsBarY = -1;
+    const scanX1 = Math.floor(width * 0.2);
+    const scanX2 = Math.floor(width * 0.5);
+    const scanX3 = Math.floor(width * 0.8);
+
+    for (let y = Math.floor(height * 0.4); y < height * 0.8; y++) {
+        let p1 = hsv.ucharPtr(y, scanX1);
+        let p2 = hsv.ucharPtr(y, scanX2);
+        let p3 = hsv.ucharPtr(y, scanX3);
+
+        // V(明度)が3箇所とも極端に低い = 黒い帯の可能性が高い
+        if (p1[2] < 35 && p2[2] < 35 && p3[2] < 35) {
+            // 黒い帯の終わりを探す
+            let endY = y;
+            for (let ey = y; ey < y + 100 && ey < height; ey++) {
+                let ep = hsv.ucharPtr(ey, scanX2);
+                if (ep[2] > 60) { // 明度が上がった = 帯が終わった
+                    endY = ey;
+                    break;
+                }
+            }
+            boardTop = endY + 2;
+            auto = true;
             break;
         }
     }
 
-    if (foundHpBarY !== -1) {
-        // HPバーの少し下から盤面が始まる
-        // 経験則から、HPバー発見位置から高さの約1%〜2%下が1行目の上端
-        boardTop = foundHpBarY + Math.floor(height * 0.015);
-        auto = true;
-    }
-
-    // --- 2. 下から上にスキャンして盤面下部(最後の一行)を特定する ---
+    // --- 2. 下から上にスキャンして盤面下部を特定する ---
     let foundBottomY = -1;
     for (let y = height - 10; y > height * 0.7; y--) {
-        let pixel = hsv.ucharPtr(y, centerX);
+        let pixel = hsv.ucharPtr(y, scanX2);
         // 彩度がある程度高い地点(ぷよ or 枠)を探す
-        if (pixel[1] > 50) {
+        if (pixel[2] > 50) {
             foundBottomY = y;
             break;
         }
@@ -211,10 +220,11 @@ function calibrateBoardCoordinates(hsv) {
         boardBottom = foundBottomY;
     }
 
-    // スケールの計算 (標準 640x1136 に対する比)
-    const refBoardHeight = 426; // 640x1136時の盤面高さ
+    // スケールの計算 (座標ベース)
+    const refBoardHeight = 426;
     const currentBoardHeight = boardBottom - boardTop;
-    const scale = currentBoardHeight / refBoardHeight;
+    let scale = currentBoardHeight / refBoardHeight;
+    if (scale < 0.5 || scale > 3.0) scale = 1.0;
 
     return { boardTop, boardBottom, boardLeft, boardRight, scale, auto };
 }
