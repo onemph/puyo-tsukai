@@ -205,11 +205,12 @@ function calibrateBoardCoordinates(src, tMenu, tNext) {
         const ny = bestNextMatch.maxPoint.y;
         const nh = tNext.rows * scale;
 
-        // NEXTバーのすぐ下が盤面
-        const boardTop = ny + nh - (2 * scale);
+        // NEXTバーのすぐ下が盤面 (実測値に基づき微調整)
+        // ユーザーフィードバックに基づき、全体的に少し下 (+4px) へ移動
+        const boardTop = ny + nh + (2 * scale);
         const boardLeft = nx + (10 * scale);
         const boardRight = nx + (630 * scale);
-        const boardBottom = boardTop + (426 * scale);
+        const boardBottom = boardTop + (430 * scale); // わずかに縦幅を広げる
 
         return { boardTop, boardBottom, boardLeft, boardRight, scale, auto: true };
     }
@@ -217,11 +218,11 @@ function calibrateBoardCoordinates(src, tMenu, tNext) {
     // NEXTバーが見つからない場合のフォールバック（MENUからの相対位置）
     const anchorX = bestMenuMatch.maxPoint.x;
     const anchorY = bestMenuMatch.maxPoint.y;
-    const relTop = 640;
+    const relTop = 644; // 640 -> 644 (4px下に移動)
     const boardLeft = anchorX + (-18 * scale);
     const boardTop = anchorY + (relTop * scale);
     const boardRight = anchorX + (602 * scale);
-    const boardBottom = boardTop + (426 * scale);
+    const boardBottom = boardTop + (430 * scale);
 
     return { boardTop, boardBottom, boardLeft, boardRight, scale, auto: true };
 }
