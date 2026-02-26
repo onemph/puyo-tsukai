@@ -1,5 +1,5 @@
 /**
- * ぷよ認識 for puyosim
+ * ぷよ認識
  * script.js
  */
 
@@ -39,11 +39,21 @@ function checkOpenCvReady() {
 function onOpenCvReady() {
     const status = document.getElementById('status');
     const fileInput = document.getElementById('fileInput');
+    const btnPrimary = document.querySelector('.btn-primary');
 
     status.innerText = '準備完了';
     status.className = 'status ready';
     fileInput.disabled = false;
+
+    if (btnPrimary) {
+        btnPrimary.disabled = false;
+        btnPrimary.style.opacity = '1';
+        btnPrimary.style.cursor = 'pointer';
+    }
+    cvReady = true;
 }
+
+let cvReady = false;
 
 // 初期化チェック開始
 checkOpenCvReady();
@@ -456,3 +466,4 @@ document.getElementById('copyBtn').addEventListener('click', () => {
     document.execCommand('copy');
     alert('URLをコピーしました');
 });
+

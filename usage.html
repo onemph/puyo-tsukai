@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-77QQWR6EV5"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+
+        gtag('config', 'G-77QQWR6EV5');
+    </script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>使い方 - ぷよ認識</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .step-list {
+            padding-left: 20px;
+        }
+
+        .step-list li {
+            margin-bottom: 15px;
+        }
+
+        .step-list strong {
+            color: var(--primary-color);
+        }
+
+        .check-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .check-list li::before {
+            content: "⚠️ ";
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>使い方ガイド</h1>
+        </header>
+
+        <main>
+            <section class="card">
+                <h2>STEP 1: スクリーンショットを撮る</h2>
+                <ul class="step-list">
+                    <li>ぷよクエのプレイ画面で、画面左上に<strong>「MENU」</strong>ボタンが見えている状態でスクリーンショットを撮影してください。</li>
+                </ul>
+            </section>
+
+            <section class="card">
+                <h2>STEP 2: 画像をアップロードする</h2>
+                <ul class="step-list">
+                    <li>画面上のステータス欄が<strong>「準備完了」</strong>になるまでお待ちください（OpenCV.jsの読み込みに数秒かかります）。</li>
+                    <li>準備完了となったら「画像を選択」ボタンを押して、撮影した画像を選んでください。</li>
+                    <!-- 実装予定<li>※PCをご利用の場合は、画像をブラウザに直接ドラッグ&amp;ドロップすることも可能です。</li> -->
+                </ul>
+            </section>
+
+            <section class="card">
+                <h2>STEP 3: シミュレーターで開く</h2>
+                <ul class="step-list">
+                    <li>解析が終わると、画面上に「puyosim.com で開く」ボタンが表示されます。</li>
+                    <li>クリックすると、解析された盤面がセットされた状態でシミュレーターが立ち上がります。</li>
+                </ul>
+            </section>
+
+            <section class="card">
+                <h2>STEP 4: 解析結果を調整・確定する</h2>
+                <ul class="step-list">
+                    <li>認識ミスがある可能性があるため、シミュレーターで開いた後は必ず盤面を確認し、間違いがあれば手動で修正してください。</li>
+                    <li><strong>プラスぷよ</strong>や<strong>チャンスぷよ</strong>には現在対応していません。これらは通常のぷよとして認識されるため、必要な場合は手動で変更してください。
+                    </li>
+                    <li>操作を開始する前に、シミュレーターの色替えエリアにある<strong>「現在の盤面を基礎として登録」</strong>ボタンを押して、盤面を確定させてください。</li>
+                </ul>
+            </section>
+
+            <div class="nav-links">
+                <a href="index.html">← ツールに戻る</a>
+            </div>
+        </main>
+    </div>
+</body>
+
+</html>
