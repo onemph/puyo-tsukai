@@ -36,46 +36,47 @@
 </head>
 
 <body>
-    <!-- SEO用(非表示) -->
-    <h1
-        style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;">
-        ぷよ認識 - ぷよクエ盤面認識ツール</h1>
+    <div class="container">
+        <!-- SEO用(非表示) -->
+        <h1
+            style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;">
+            ぷよ認識 - ぷよクエ盤面認識ツール</h1>
 
-    <main>
-        <div style="font-size: 10px; color: #666; text-align: right; padding: 5px;">Update: 2026/03/02 20:11</div>
+        <main>
+            <div style="font-size: 10px; color: #666; text-align: right; padding: 5px;">Update: 2026/03/02 20:11</div>
 
-        <section class="result-section" id="resultArea" style="display: none;">
-            <h2>生成されたURL</h2>
-            <div class="result-url-wrapper">
-                <input type="text" id="resultUrl" readonly>
-                <button id="copyBtn" class="btn-secondary">コピー</button>
-            </div>
-            <div class="link-wrapper">
-                <a id="puyoSimLink" href="#" target="_blank" class="btn-puyosim">puyosim.com で開く</a>
-            </div>
-        </section>
+            <section class="result-section" id="resultArea" style="display: none;">
+                <h2>生成されたURL</h2>
+                <div class="result-url-wrapper">
+                    <input type="text" id="resultUrl" readonly>
+                    <button id="copyBtn" class="btn-secondary">コピー</button>
+                </div>
+                <div class="link-wrapper">
+                    <a id="puyoSimLink" href="#" target="_blank" class="btn-puyosim">puyosim.com で開く</a>
+                </div>
+            </section>
 
-        <section class="upload-section">
-            <div id="status" class="status loading">OpenCV.js を読み込み中...</div>
-            <div class="file-input-wrapper">
-                <button class="btn-primary" disabled style="opacity: 0.6; cursor: not-allowed;">画像を選択</button>
-                <input type="file" id="fileInput" accept="image/*" disabled>
-            </div>
-        </section>
+            <section class="upload-section">
+                <div id="status" class="status loading">OpenCV.js を読み込み中...</div>
+                <div class="file-input-wrapper">
+                    <button class="btn-primary" disabled style="opacity: 0.6; cursor: not-allowed;">画像を選択</button>
+                    <input type="file" id="fileInput" accept="image/*" disabled>
+                </div>
+            </section>
 
-        <section class="preview-section">
-            <div class="canvas-wrapper">
-                <canvas id="canvasInput"></canvas>
-            </div>
-        </section>
-    </main>
+            <section class="preview-section">
+                <div class="canvas-wrapper">
+                    <canvas id="canvasInput"></canvas>
+                </div>
+            </section>
+        </main>
 
-    <nav class="nav-links">
-        <a href="usage.html">使い方</a>
-        <a href="disclaimer.html">免責事項</a>
-        <a href="https://marshmallow-qa.com/liplppu6tcr6sve">お問い合わせ</a>
-        <a href="https://x.com/yukino_puyo">Twitter</a>
-    </nav>
+        <nav class="nav-links">
+            <a href="usage.html">使い方</a>
+            <a href="disclaimer.html">免責事項</a>
+            <a href="https://marshmallow-qa.com/liplppu6tcr6sve">お問い合わせ</a>
+            <a href="https://x.com/yukino_puyo">Twitter</a>
+        </nav>
     </div>
 
     <script src="js/script.js"></script>
