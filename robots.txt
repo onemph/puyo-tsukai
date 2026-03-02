@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://puyo-tsukai.netlify.app/sitemap.xml
