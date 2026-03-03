@@ -33,17 +33,119 @@
     <meta name="twitter:description" content="ぷよクエのスクリーンショットを解析し、puyosimシミュレーターへ盤面を再現します。">
 
     <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* ドラッグ&ドロップ用のスタイル */
+        .drop-zone {
+            transition: all 0.2s ease;
+        }
+
+        .drop-zone.drag-over {
+            background-color: rgba(0, 123, 255, 0.1);
+        }
+
+        .preview-section {
+            position: relative;
+            min-height: 300px;
+            background: #eef2f7;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px dashed var(--primary-color);
+            transition: all 0.2s ease;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 解析前の黒い背景を打ち消す */
+        .preview-section:not(.has-image) .canvas-wrapper {
+            background: transparent;
+        }
+
+        .preview-section.has-image {
+            background: #fff;
+            border: 1px solid #ddd;
+            min-height: auto;
+        }
+
+        .preview-section.has-image .canvas-wrapper {
+            background: #000;
+        }
+
+        .drag-guide {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            width: 80%;
+            color: var(--primary-color);
+            font-size: 1.1em;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .preview-section.has-image .drag-guide {
+            display: none;
+        }
+
+        /* スマートフォン等のタッチデバイスではドラッグガイドを非表示にする */
+        @media (max-width: 768px) {
+            .drag-guide {
+                display: none;
+            }
+
+            .preview-section {
+                min-height: 150px;
+            }
+        }
+
+        /* 画面全体のドラッグオーバーレイ */
+        .drag-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(74, 144, 226, 0.25);
+            /* 透明度を下げて柔らかく */
+            backdrop-filter: blur(8px);
+            /* ぼかしを強めて高級感を */
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            transition: all 0.3s ease;
+        }
+
+        .drag-overlay-text {
+            color: white;
+            font-size: 2.2em;
+            font-weight: bold;
+            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            text-align: center;
+            padding: 20px;
+        }
+
+        body.drag-active .drag-overlay {
+            display: flex;
+        }
+    </style>
 </head>
 
 <body>
+    <div id="dragOverlay" class="drag-overlay">
+        <div class="drag-overlay-text">ドロップして解析</div>
+    </div>
     <div class="container">
         <!-- SEO用(非表示) -->
         <h1
             style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;">
             ぷよ認識 - ぷよクエ盤面認識ツール</h1>
 
-        <main>
-            <div style="font-size: 10px; color: #666; text-align: right; padding: 5px;">Update: 2026/03/03 09:31</div>
+        <main class="drop-zone" id="dropZone">
+            <div style="font-size: 10px; color: #666; text-align: right; padding: 5px;">Update: 2026/03/04 08:48</div>
 
             <section class="result-section" id="resultArea" style="display: none;">
                 <h2>生成されたURL</h2>
@@ -64,7 +166,10 @@
                 </div>
             </section>
 
-            <section class="preview-section">
+            <section class="preview-section" id="previewSection">
+                <div class="drag-guide">
+                    または画像をドラッグ&amp;ドロップ
+                </div>
                 <div class="canvas-wrapper">
                     <canvas id="canvasInput"></canvas>
                 </div>

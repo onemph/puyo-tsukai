@@ -78,6 +78,9 @@ document.getElementById('fileInput').addEventListener('change', (e) => {
         canvas.height = img.height;
         ctx.drawImage(img, 0, 0);
 
+        // ガイドを消してキャンバスを表示
+        document.getElementById('previewSection').classList.add('has-image');
+
         // 認識処理を開始
         recognizePuyo(img);
     };
@@ -88,6 +91,9 @@ document.getElementById('fileInput').addEventListener('change', (e) => {
  * ぷよ認識のメインロジック (テンプレートマッチング Ver.1)
  */
 async function recognizePuyo(img) {
+    // ボタン等で画像選択された場合もガイドを消す
+    document.getElementById('previewSection').classList.add('has-image');
+
     const status = document.getElementById('status');
     status.innerText = 'テンプレートを読み込み中...';
 
@@ -457,6 +463,54 @@ function generateUrl(next, board) {
     resultArea.style.display = 'block';
 }
 
+// ドラッグ&ドロップの設定 (画面全体で受け付ける)
+document.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    document.body.classList.add('drag-active');
+});
+
+document.addEventListener('dragenter', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+});
+
+document.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // 画面外に出た時のみクラスを削除
+    if (e.relatedTarget === null) {
+        document.body.classList.remove('drag-active');
+    }
+});
+
+document.addEventListener('drop', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    document.body.classList.remove('drag-active');
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        const file = files[0];
+        if (file.type.startsWith('image/')) {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.getElementById('canvasInput');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+
+                // ガイドを消してキャンバスを表示
+                document.getElementById('previewSection').classList.add('has-image');
+
+                recognizePuyo(img);
+            };
+            img.src = URL.createObjectURL(file);
+        }
+    }
+});
+
 /**
  * コピーボタンの処理
  */
@@ -466,4 +520,3 @@ document.getElementById('copyBtn').addEventListener('click', () => {
     document.execCommand('copy');
     alert('URLをコピーしました');
 });
-
