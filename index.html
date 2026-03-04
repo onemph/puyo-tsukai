@@ -34,7 +34,34 @@
 
     <link rel="stylesheet" href="css/style.css">
     <style>
-        /* ドラッグ&ドロップ用のスタイル */
+        /* 視認性優先: ギュッと中央にまとめつつ、上部の余白を削る */
+        body {
+            padding: 10px;
+            /* 最小限の余白 */
+            background-color: var(--bg-color);
+            min-height: auto;
+            /* 全画面引き伸ばしを防止 */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            /* 上部に寄せる */
+        }
+
+        .container {
+            max-width: 800px;
+            /* 中央にまとまる心地よい幅 */
+            width: 100%;
+            gap: 15px;
+            /* 部品の間隔を半分に */
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            /* 穏やかな影に */
+            background: var(--card-bg);
+            margin-top: 0;
+            /* 最上部に配置 */
+        }
+
         .drop-zone {
             transition: all 0.2s ease;
         }
@@ -45,13 +72,15 @@
 
         .preview-section {
             position: relative;
-            min-height: 300px;
+            min-height: 200px;
+            /* 未解析時の高さを抑制(300px→200px) */
             background: #eef2f7;
             border-radius: 12px;
             overflow: hidden;
             border: 2px dashed var(--primary-color);
             transition: all 0.2s ease;
-            margin-bottom: 20px;
+            margin-bottom: 5px;
+            /* 下部との間隔を最小に */
             display: flex;
             align-items: center;
             justify-content: center;
@@ -89,14 +118,20 @@
             display: none;
         }
 
-        /* スマートフォン等のタッチデバイスではドラッグガイドを非表示にする */
+        /* スマートフォン対応 */
         @media (max-width: 768px) {
             .drag-guide {
                 display: none;
             }
 
             .preview-section {
-                min-height: 150px;
+                min-height: 120px;
+                /* スマホではさらに低く(150px→120px) */
+            }
+
+            .container {
+                padding: 15px;
+                gap: 10px;
             }
         }
 
@@ -131,6 +166,27 @@
         body.drag-active .drag-overlay {
             display: flex;
         }
+
+        /* リンク集の完全なシンプル化 */
+        .nav-links {
+            margin: 0;
+            padding: 10px 0;
+            border: none;
+            /* 線を削除 */
+            justify-content: center;
+        }
+
+        /* SEO用(非表示)のタイトル */
+        h1.seo-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
     </style>
 </head>
 
@@ -139,13 +195,11 @@
         <div class="drag-overlay-text">ドロップして解析</div>
     </div>
     <div class="container">
-        <!-- SEO用(非表示) -->
-        <h1
-            style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;">
-            ぷよ認識 - ぷよクエ盤面認識ツール</h1>
+        <!-- SEO用タイトル -->
+        <h1 class="seo-only">ぷよ認識 - ぷよクエ盤面認識ツール</h1>
 
         <main class="drop-zone" id="dropZone">
-            <div style="font-size: 10px; color: #666; text-align: right; padding: 5px;">Update: 2026/03/04 08:48</div>
+            <div style="font-size: 10px; color: #666; text-align: right; padding: 5px;">Update: 2026/03/04 19:22</div>
 
             <section class="result-section" id="resultArea" style="display: none;">
                 <h2>生成されたURL</h2>

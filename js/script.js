@@ -478,8 +478,8 @@ document.addEventListener('dragenter', (e) => {
 document.addEventListener('dragleave', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    // 画面外に出た時のみクラスを削除
-    if (e.relatedTarget === null) {
+    // 画面外に出た時、またはブラウザの要素（子要素等）に吸い込まれた時の判定を慎重に行う
+    if (e.relatedTarget === null || !document.body.contains(e.relatedTarget)) {
         document.body.classList.remove('drag-active');
     }
 });
@@ -502,7 +502,10 @@ document.addEventListener('drop', (e) => {
                 ctx.drawImage(img, 0, 0);
 
                 // ガイドを消してキャンバスを表示
-                document.getElementById('previewSection').classList.add('has-image');
+                const previewSection = document.getElementById('previewSection');
+                if (previewSection) {
+                    previewSection.classList.add('has-image');
+                }
 
                 recognizePuyo(img);
             };
