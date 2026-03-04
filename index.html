@@ -27,9 +27,9 @@
         // 初回描画（FCP/LCP）を優先し、ページが落ち着いてから読み込む
         window.addEventListener('load', () => {
             if ('requestIdleCallback' in window) {
-                requestIdleCallback(() => setTimeout(loadOptimizedScripts, 500));
+                requestIdleCallback(() => setTimeout(loadOptimizedScripts, 1500));
             } else {
-                setTimeout(loadOptimizedScripts, 1000);
+                setTimeout(loadOptimizedScripts, 2000);
             }
         });
     </script>
@@ -54,10 +54,7 @@
     <meta name="twitter:title" content="ぷよクエ盤面認識ツール - スクリーンショットからpuyosim盤面を自動作成">
     <meta name="twitter:description" content="ぷよクエのスクリーンショットを解析し、puyosimシミュレーターへ盤面を再現します。">
 
-    <link rel="stylesheet" href="css/style.css" media="print" onload="this.media='all'">
-    <noscript>
-        <link rel="stylesheet" href="css/style.css">
-    </noscript>
+    <link rel="stylesheet" href="css/style.css">
     <style>
         /* クリティカルCSS: 初回描画を最速化 */
         body {
@@ -67,19 +64,22 @@
             justify-content: center;
             align-items: flex-start;
             margin: 0;
-            font-family: sans-serif;
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            color: #333;
         }
 
         .container {
             max-width: 800px;
             width: 100%;
             background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
             border-radius: 12px;
             padding: 20px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
             display: flex;
             flex-direction: column;
             gap: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
         }
 
         .status {
@@ -89,6 +89,7 @@
             font-weight: bold;
             background: #fffbe6;
             border: 1px solid #ffe58f;
+            margin-bottom: 20px;
         }
 
         .seo-only {
@@ -113,7 +114,7 @@
         <h1 class="seo-only">ぷよ認識 - ぷよクエ盤面認識ツール</h1>
 
         <main class="drop-zone" id="dropZone">
-            <div class="update-timestamp">Update: 2026/03/04 20:05</div>
+            <div class="update-timestamp">Update: 2026/03/04 20:10</div>
 
             <section class="result-section" id="resultArea" style="display: none;">
                 <h2>生成されたURL</h2>
