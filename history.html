@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>更新履歴 - ぷよクエ盤面認識ツール</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>更新履歴</h1>
+        </header>
+
+        <main>
+            <div class="history-table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>バージョン</th>
+                            <th>日時</th>
+                            <th>変更内容</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="version-num">v1.7</td>
+                            <td class="date-col">2026/03/04 20:07</td>
+                            <td>サイトにアクセスした際の表示速度を改善し、読み込み過程におけるレイアウトの乱れを解消しました。<br><small>(HTMLヘッダー内へのクリティカルCSS埋め込みによる、スタイル適用プロセスの最適化)</small>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="version-num">v1.6</td>
+                            <td class="date-col">2026/03/04 08:49</td>
+                            <td>(PCのみ) 画像のドラッグ&ドロップでの読み込みに対応しました。<br><small>(dragover/drop イベントによる dataTransfer.files
+                                    からの画像取得処理の実装)</small></td>
+                        </tr>
+                        <tr>
+                            <td class="version-num">v1.5</td>
+                            <td class="date-col">2026/03/03 08:31</td>
+                            <td>画面が表示されるまでの待ち時間を短縮しました。<br><small>(requestIdleCallbackとsetTimeoutを利用した、OpenCV.jsの遅延読み込みとUI先行レンダリングの実装)</small>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="version-num">v1.4</td>
+                            <td class="date-col">2026/02/26 10:51</td>
+                            <td>ご要望や不具合報告を送れるよう、お問い合わせ窓口とTwitterを設置しました。</td>
+                        </tr>
+                        <tr>
+                            <td class="version-num">v1.3</td>
+                            <td class="date-col">2026/02/25 01:26</td>
+                            <td>スマートフォンでの解析中にページが強制終了したり、動作停止したりする問題を改善しました。<br><small>(メモリリーク防止のため、不要になったcv.Matオブジェクトに対する.delete()メソッドの明示的な呼び出し)</small>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="version-num">v1.2</td>
+                            <td class="date-col">2026/02/25 00:28</td>
+                            <td>v1.0での想定を超えた極端な画面比率など、特定の環境において生じていた解析位置の不備を修正しました。<br><small>(clientWidthを用いた描画比率計算と、相対スケール補正ロジックの導入による座標計算の精緻化)</small>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="version-num">v1.1</td>
+                            <td class="date-col">2026/02/25 00:09</td>
+                            <td>盤面の境界をより厳密に判別し、解析の精度をさらに高めました。<br><small>(cv.matchTemplate実行前の不要なROI(解析範囲)カットと、特定デバイス向けY座標オフセット値のハードコード調整)</small>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="version-num">v1.0</td>
+                            <td class="date-col">2026/02/24 23:55</td>
+                            <td>特別な設定なしで、様々な機種のスクリーンショットから解析が可能になりました。<br>画像サイズや、機種による表示位置の違いなどを気にせず利用可能になりました。<br><small>(OpenCVのテンプレートマッチングを用い、画像内のボタンを基準に解析座標を動的に算出・構成する仕組みの実装)</small><br>安定して使えるツールの形が整ったため、v1.0といたしました。
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="version-num">v0.4</td>
+                            <td class="date-col">2026/02/22 23:58</td>
+                            <td>色認識の仕組みを根本から改善し、光の加減による誤認識を抑えました。<br><small>(中心部9点の色を判別する多数決方式と、色相の違いを最重視する計算式の採用)</small>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="version-num">v0.3</td>
+                            <td class="date-col">2026/02/22 16:44</td>
+                            <td>認識に必要な色設定の微調整を行い、解析の正確性を向上させました。<br><small>(数種類の画像から平均的なHSV値を算出して判定基準を更新し、個体差を吸収できるよう閾値の微調整)</small>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="version-num">v0.2</td>
+                            <td class="date-col">2026/02/22 16:23</td>
+                            <td>プログラムの読み込み方式を改善し、安定して解析が始まるようにしました。<br><small>(OpenCV.jsをCDNからローカル配信に切り替え、CORSエラーや環境によるブロックの解消)</small>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="version-num">v0.1</td>
+                            <td class="date-col">2026/02/21 18:14</td>
+                            <td>初期版を公開しました。</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="nav-links">
+                <a href="index.html">← ツールに戻る</a>
+            </div>
+        </main>
+    </div>
+</body>
+
+</html>

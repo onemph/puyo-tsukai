@@ -284,6 +284,84 @@ body.drag-active .drag-overlay {
     border: 0;
 }
 
+/* サブページ用共通コンポーネント */
+.step-list {
+    padding-left: 20px;
+}
+
+.step-list li {
+    margin-bottom: 15px;
+}
+
+.step-list strong {
+    color: var(--primary-color);
+}
+
+.check-list {
+    list-style: none;
+    padding: 0;
+}
+
+.check-list li::before {
+    content: "⚠️ ";
+}
+
+/* テーブル用デザイン（history.html用）前半 */
+.history-table-wrapper {
+    overflow-x: auto;
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #ddd;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+    color: #444;
+}
+
+th {
+    background: #f8f9fa;
+    color: var(--primary-color);
+    text-align: left;
+    padding: 12px 15px;
+    font-weight: bold;
+    border-bottom: 2px solid #eee;
+    white-space: nowrap;
+}
+
+/* テーブル用デザイン後半 */
+td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+    line-height: 1.5;
+}
+
+tr:last-child td {
+    border-bottom: none;
+}
+
+small {
+    color: #777;
+    display: block;
+    margin-top: 4px;
+}
+
+.version-num {
+    font-weight: bold;
+    color: var(--primary-color);
+    width: 80px;
+}
+
+.date-col {
+    color: #888;
+    font-size: 0.85rem;
+    width: 140px;
+    white-space: nowrap;
+}
+
 /* スマートフォン対応 */
 @media (max-width: 768px) {
     .drag-guide {
@@ -297,5 +375,12 @@ body.drag-active .drag-overlay {
     .container {
         padding: 15px;
         gap: 10px;
+    }
+
+    /* テーブルのスマホ表示調整 */
+    th,
+    td {
+        padding: 10px;
+        font-size: 0.9rem;
     }
 }
