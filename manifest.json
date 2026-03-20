@@ -1,0 +1,31 @@
+{
+    "name": "ぷよクエ盤面認識ツール",
+    "short_name": "ぷよ認識",
+    "description": "スクリーンショットからpuyosim盤面を自動作成",
+    "start_url": "index.html",
+    "display": "standalone",
+    "background_color": "#f5f7fa",
+    "theme_color": "#f5f7fa",
+    "icons": [
+        {
+            "src": "assets/twitt_icon01.jpg",
+            "sizes": "128x128",
+            "type": "image/jpeg"
+        }
+    ],
+    "share_target": {
+        "action": "index.html",
+        "method": "POST",
+        "enctype": "multipart/form-data",
+        "params": {
+            "files": [
+                {
+                    "name": "shared_image",
+                    "accept": [
+                        "image/*"
+                    ]
+                }
+            ]
+        }
+    }
+}

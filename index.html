@@ -26,6 +26,9 @@
 
         // 初回描画（FCP/LCP）を優先し、ページが落ち着いてから読み込む
         window.addEventListener('load', () => {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js').catch(e => console.error(e));
+            }
             if ('requestIdleCallback' in window) {
                 requestIdleCallback(() => setTimeout(loadOptimizedScripts, 1500));
             } else {
@@ -54,6 +57,7 @@
     <meta name="twitter:title" content="ぷよクエ盤面認識ツール - スクリーンショットからpuyosim盤面を自動作成">
     <meta name="twitter:description" content="ぷよクエのスクリーンショットを解析し、puyosimシミュレーターへ盤面を再現します。">
 
+    <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="css/style.css">
     <style>
         /* クリティカルCSS: 初回描画を最速化 */
