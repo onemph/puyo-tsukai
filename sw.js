@@ -1,4 +1,4 @@
-const CACHE_NAME = 'puyo-tsukai-v7';
+const CACHE_NAME = 'puyo-tsukai-v8';
 
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
@@ -41,7 +41,7 @@ self.addEventListener('install', (event) => {
                 './assets/menu_template.png',
                 './assets/next_template.png',
                 './assets/pwa-icon.png',
-                './manifest.json'
+                './manifest.json?v=2'
             ]);
         })
     );
