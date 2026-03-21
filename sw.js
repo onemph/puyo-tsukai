@@ -1,4 +1,4 @@
-const CACHE_NAME = 'puyo-tsukai-v6';
+const CACHE_NAME = 'puyo-tsukai-v7';
 
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
@@ -40,6 +40,7 @@ self.addEventListener('install', (event) => {
                 './js/opencv.js',
                 './assets/menu_template.png',
                 './assets/next_template.png',
+                './assets/pwa-icon.png',
                 './manifest.json'
             ]);
         })
