@@ -32,6 +32,13 @@
                 setTimeout(loadOptimizedScripts, 2000);
             }
         });
+
+        // Service Worker の登録
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(err => console.error(err));
+            });
+        }
     </script>
 
     <meta charset="UTF-8">
@@ -114,7 +121,7 @@
         <h1 class="seo-only">ぷよ認識 - ぷよクエ盤面認識ツール</h1>
 
         <main class="drop-zone" id="dropZone">
-            <div class="update-timestamp">2026/03/04 20:07</div>
+            <div class="update-timestamp">2026/03/22 13:00</div>
 
             <section class="result-section" id="resultArea" style="display: none;">
                 <h2>生成されたURL</h2>
