@@ -32,6 +32,13 @@
                 setTimeout(loadOptimizedScripts, 2000);
             }
         });
+
+        // Service Worker の登録
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(err => console.error(err));
+            });
+        }
     </script>
 
     <meta charset="UTF-8">
