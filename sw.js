@@ -1,9 +1,10 @@
-const CACHE_NAME = 'puyo-cache-v1';
+const CACHE_NAME = 'puyo-cache-v4';
 const ASSETS = [
     './',
     './index.html',
     './css/style.css',
     './js/opencv.js',
+    './js/opencv.wasm',
     './js/script.js',
     './assets/menu_template.png',
     './assets/next_template.png'

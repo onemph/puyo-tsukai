@@ -59,9 +59,8 @@ let cvReady = false;
 checkOpenCvReady();
 
 // OpenCV.js のグローバルコールバック (保険)
-var Module = {
-    onRuntimeInitialized: onOpenCvReady
-};
+window.Module = window.Module || {};
+window.Module.onRuntimeInitialized = onOpenCvReady;
 
 /**
  * 画像が選択された時の処理
