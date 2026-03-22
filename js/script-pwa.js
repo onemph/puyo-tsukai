@@ -90,7 +90,7 @@ document.getElementById('fileInput').addEventListener('change', (e) => {
 /**
  * ぷよ認識のメインロジック (テンプレートマッチング Ver.1)
  */
-async function recognizePuyo(img) {
+async function recognizePuyo(img, autoRedirect = false) {
     // ボタン等で画像選択された場合もガイドを消す
     document.getElementById('previewSection').classList.add('has-image');
 
@@ -135,7 +135,6 @@ async function recognizePuyo(img) {
         cv.cvtColor(hsv, hsv, cv.COLOR_RGB2HSV);
 
         const { boardTop, boardBottom, boardLeft, boardRight, scale } = coords;
-        console.log("Calibrated coordinates (Template Match):", coords);
 
         const boardWidth = boardRight - boardLeft;
         const boardHeight = boardBottom - boardTop;
@@ -176,7 +175,7 @@ async function recognizePuyo(img) {
         const boardParams = { boardTop, boardLeft, cellWidth, cellHeight, scale };
         const nextResult = detectNextPuyos(hsv, src.cols, src.rows, boardParams);
 
-        generateUrl(nextResult, boardResult);
+        generateUrl(nextResult, boardResult, autoRedirect);
 
         hsv.delete();
         src.delete();
@@ -209,14 +208,11 @@ function calibrateBoardCoordinates(src, tMenu, tNext) {
     if (bestMenuMatch.maxVal < 0.6) return { auto: false };
 
     const scale = bestMenuMatch.scale;
-    console.log("Anchor match result:", { menuVal: bestMenuMatch.maxVal, scale });
 
     // 2. NEXTバー（盤面直上のバー）を探す (画面中央〜下部 70% を探す)
     let bestNextMatch = findBestMatch(src, tNext, [1.0], { y: Math.floor(height * 0.3), height: Math.floor(height * 0.7) });
 
-    // NEXTバーが見つかった場合
     if (bestNextMatch.maxVal > 0.6) {
-        console.log("Next match found:", bestNextMatch.maxVal);
         const nx = bestNextMatch.maxPoint.x;
         const ny = bestNextMatch.maxPoint.y;
         const nh = tNext.rows * scale;
@@ -451,7 +447,7 @@ function detectNextPuyos(hsv, width, height, boardParams) {
 /**
  * puyosim.com の URL を生成して表示
  */
-function generateUrl(next, board) {
+function generateUrl(next, board, autoRedirect = false) {
     const resultUrl = `${PUYOSIM_BASE_URL}${next}_${board}${DEFAULT_OPTIONS}`;
 
     const resultArea = document.getElementById('resultArea');
@@ -461,6 +457,10 @@ function generateUrl(next, board) {
     resultInput.value = resultUrl;
     puyoSimLink.href = resultUrl;
     resultArea.style.display = 'block';
+
+    if (autoRedirect) {
+        window.location.replace(resultUrl);
+    }
 }
 
 // ドラッグ&ドロップの設定 (画面全体で受け付ける)
@@ -523,3 +523,28 @@ document.getElementById('copyBtn').addEventListener('click', () => {
     document.execCommand('copy');
     alert('URLをコピーしました');
 });
+
+/** 共有メニューから渡された画像を自動処理 */
+(async () => {
+    // OpenCV.jsの準備ができるまで待機
+    while (typeof cvReady === 'undefined' || !cvReady) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    if (!('caches' in window)) return;
+    const cache = await caches.open('puyo-share');
+    const response = await cache.match('shared-image');
+    if (!response) return;
+
+    const blob = await response.blob();
+    const img = new Image();
+    img.onload = () => {
+        const canvas = document.getElementById('canvasInput');
+        canvas.width = img.width; canvas.height = img.height;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        document.getElementById('previewSection').classList.add('has-image');
+        recognizePuyo(img, true);
+    };
+    img.src = URL.createObjectURL(blob);
+    await cache.delete('shared-image');
+})();

@@ -1,10 +1,10 @@
-const CACHE_NAME = 'puyo-tsukai-v10';
+const CACHE_NAME = 'puyo-tsukai-v11';
 
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
     // Share Target の POST リクエストを処理
-    if (event.request.method === 'POST' && (url.pathname.endsWith('/index.html') || url.pathname === '/' || url.pathname.endsWith('/index'))) {
+    if (event.request.method === 'POST' && (url.pathname.endsWith('/pwa.html') || url.pathname.endsWith('/pwa'))) {
         event.respondWith(
             (async () => {
                 const formData = await event.request.formData();
@@ -12,7 +12,7 @@ self.addEventListener('fetch', (event) => {
                 if (image) {
                     const cache = await caches.open('puyo-share');
                     await cache.put('shared-image', new Response(image));
-                    return Response.redirect('./?shared=1', 303);
+                    return Response.redirect('./pwa.html?shared=1', 303);
                 }
                 return fetch(event.request);
             })()
@@ -33,10 +33,9 @@ self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
             return cache.addAll([
-                './',
-                './index.html',
+                './pwa.html',
                 './css/style.css',
-                './js/script.js',
+                './js/script-pwa.js',
                 './js/opencv.js',
                 './assets/menu_template.png',
                 './assets/next_template.png',
