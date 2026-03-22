@@ -1,0 +1,29 @@
+{
+    "name": "ぷよ認識",
+    "short_name": "ぷよ認識",
+    "start_url": "pwa.html",
+    "display": "standalone",
+    "icons": [
+        {
+            "src": "assets/pwa-icon.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ],
+    "share_target": {
+        "action": "pwa.html",
+        "method": "POST",
+        "enctype": "multipart/form-data",
+        "params": {
+            "files": [
+                {
+                    "name": "shared_image",
+                    "accept": [
+                        "image/jpeg",
+                        "image/png"
+                    ]
+                }
+            ]
+        }
+    }
+}
