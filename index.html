@@ -16,20 +16,26 @@
             gtag('js', new Date());
             gtag('config', 'G-77QQWR6EV5');
 
-            // OpenCV.js (10MBの巨大な解析エンジン)
-            const opencv = document.createElement('script');
-            opencv.src = 'js/opencv.js';
-            opencv.async = true;
-            opencv.type = 'text/javascript';
-            document.body.appendChild(opencv);
+            // OpenCV.js (WASMバイナリを明示的に取得してからJSを読み込む)
+            fetch('js/opencv.wasm')
+                .then(response => response.arrayBuffer())
+                .then(buffer => {
+                    window.Module = window.Module || {};
+                    window.Module.wasmBinary = buffer;
+                    const opencv = document.createElement('script');
+                    opencv.src = 'js/opencv.js';
+                    opencv.async = true;
+                    document.body.appendChild(opencv);
+                })
+                .catch(err => console.error("WASM load error:", err));
         }
 
         // 初回描画（FCP/LCP）を優先し、ページが落ち着いてから読み込む
         window.addEventListener('load', () => {
             if ('requestIdleCallback' in window) {
-                requestIdleCallback(() => setTimeout(loadOptimizedScripts, 1500));
+                requestIdleCallback(() => setTimeout(loadOptimizedScripts, 0));
             } else {
-                setTimeout(loadOptimizedScripts, 2000);
+                setTimeout(loadOptimizedScripts, 50);
             }
         });
 
@@ -121,7 +127,7 @@
         <h1 class="seo-only">ぷよ認識 - ぷよクエ盤面認識ツール</h1>
 
         <main class="drop-zone" id="dropZone">
-            <div class="update-timestamp">2026/03/22 13:00</div>
+            <div class="update-timestamp">Update: 2026/03/22 18:47</div>
 
             <section class="result-section" id="resultArea" style="display: none;">
                 <h2>生成されたURL</h2>
