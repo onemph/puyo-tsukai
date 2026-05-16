@@ -260,7 +260,11 @@ function findBestMatch(src, templ, relativeScales, roi = null) {
     let srcGray = new cv.Mat();
     cv.cvtColor(searchArea, srcGray, cv.COLOR_RGBA2GRAY);
 
-    const baseScale = src.cols / 640;
+    let estimatedCols = src.cols;
+    if (src.rows / src.cols < 1.6) {
+        estimatedCols = src.rows / 1.775;
+    }
+    const baseScale = estimatedCols / 640;
     for (let rs of relativeScales) {
         const s = rs * baseScale;
         let tw = Math.floor(templ.cols * s);
